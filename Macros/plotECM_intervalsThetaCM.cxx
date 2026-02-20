@@ -18,17 +18,17 @@
 
 #include <vector>
 
-#include "../PostAnalysis/HistConfig.h"
-
 void plotECM_intervalsThetaCM()
 {
     // Read data
-    auto filename {TString::Format("../PostAnalysis/Outputs/tree_ex_20Na_p_p.root")};
+    auto filename {TString::Format("../PostAnalysis/Outputs/tree_ex_20Mg_p_p.root")};
     ROOT::EnableImplicitMT();
     ROOT::RDataFrame df {"Final_Tree", filename};
-    auto nodeSil {df.Filter([](ActRoot::MergerData& mer) { return !mer.fLight.IsL1(); }, {"MergerData"})};
-    auto nodeL1 {df.Filter([](ActRoot::MergerData& mer) { return mer.fLight.IsL1(); }, {"MergerData"})};
+    auto nodeSil {df.Filter("IsL1 == false")};
+    auto nodeL1 {df.Filter("IsL1 == true")};
 
+    // Model of histogram
+    ROOT::RDF::TH1DModel mECM {"hECM", "E_{CM};E_{CM} [MeV];Counts / 10 keV", 500, 0, 5};
     // Get histograms of Ecm on intervals of RP.x()
     std::vector<ROOT::TThreadedObject<TH1D>*> hsSil, hsL1;
     double step {10}; // deg
@@ -40,11 +40,11 @@ void plotECM_intervalsThetaCM()
         hsSil.push_back(new ROOT::TThreadedObject<TH1D>(
             TString::Format("hECM%d", idx),
             TString::Format("#theta_{CM} [%.2f, %.2f);E_{CM} [MeV];Counts / 10 keV", theta, theta + step),
-            HistConfig::ECM.fNbinsX, HistConfig::ECM.fXLow, HistConfig::ECM.fXUp));
+            mECM.fNbinsX, mECM.fXLow, mECM.fXUp));
         hsL1.push_back(new ROOT::TThreadedObject<TH1D>(
             TString::Format("hECM%d", idx),
             TString::Format("#theta_{CM} [%.2f, %.2f);E_{CM} [MeV];Counts / 10 keV", theta, theta + step),
-            HistConfig::ECM.fNbinsX, HistConfig::ECM.fXLow, HistConfig::ECM.fXUp));
+            mECM.fNbinsX, mECM.fXLow, mECM.fXUp));
         idx++;
     }
     // Initialize slot 0 to not crash
@@ -54,7 +54,7 @@ void plotECM_intervalsThetaCM()
         h->GetAtSlot(0);
 
     // Fill histograms
-    auto hECM2d {df.Histo2D(HistConfig::ThetaCMECM, "ThetaCM", "ECM")};
+    // auto hECM2d {df.Histo2D(HistConfig::ThetaCMECM, "Rec_ThetaCM", "Rec_ECM")};
     // Silicons
     nodeSil.ForeachSlot(
         [&](unsigned int slot, double thetaCM, double ecm)
@@ -69,7 +69,7 @@ void plotECM_intervalsThetaCM()
                 }
             }
         },
-        {"ThetaCM", "Rec_ECM"});
+        {"Rec_ThetaCM", "Rec_ECM"});
     // L1
     nodeL1.ForeachSlot(
         [&](unsigned int slot, double thetaCM, double ecm)
@@ -84,7 +84,7 @@ void plotECM_intervalsThetaCM()
                 }
             }
         },
-        {"ThetaCM", "Rec_ECM"});
+        {"Rec_ThetaCM", "Rec_ECM"});
 
 
     // Styling options
@@ -141,7 +141,10 @@ void plotECM_intervalsThetaCM()
     leg = gPad->BuildLegend(0.8, 0.1, 0.95, 0.85);
 
     // Create lines and texts
-    std::vector<double> resonances {0.717, 0.85, 0.98, 1.28, 1.885};
+    // These are for 21Mg!
+    // std::vector<double> resonances {0.717, 0.85, 0.98, 1.28, 1.885};
+    // No data for 21Al
+    std::vector<double> resonances {};
     std::vector<std::string> comments {"?", "New?", "", "", "New!"};
     auto pad {c2->cd(1)};
     pad->Update();

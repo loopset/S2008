@@ -20,9 +20,7 @@
 #include "TVirtualPad.h"
 
 #include <cmath>
-#include <fstream>
 #include <iostream>
-#include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -101,6 +99,7 @@ void Pipe2_Ex(const std::string& beam, const std::string& target, const std::str
     // All the above beam energies include energy losses in CFA, window, etc...
     // They're given at X = 0 of the pad plane
     ActPhysics::Kinematics kin {pb, pt, pl, EBeamFirst * pb.GetAMU()};
+    auto T1thresh {kin.GetT1Thresh()};
     // Vector of kinematics as one object is needed per
     // processing slot (since we are changing EBeam in each entry)
     std::vector<ActPhysics::Kinematics> vkins {df.GetNSlots()};
@@ -144,6 +143,20 @@ void Pipe2_Ex(const std::string& beam, const std::string& target, const std::str
                            return vkins[slot].ReconstructExcitationEnergy(EVertex, (d.fThetaLight) * TMath::DegToRad());
                        },
                        {"MergerData", "EVertex", "EBeam"})
+            .DefineSlot("Rec_Ex",
+                        [&](unsigned int slot, const ActRoot::MergerData& d, double EVertex, double EBeam)
+                        {
+                            // For some events p is imaginary... poor reconstruction of who knows
+                            double E {EBeam + pb.GetMass()};
+                            double p {TMath::Sqrt(E * E - pb.GetMass() * pb.GetMass())};
+                            bool isOk {std::isfinite(p)};
+                            if(!isOk)
+                                return 0.;
+                            vkins[slot].SetBeamEnergy(EBeam);
+                            return vkins[slot].ReconstructExcitationEnergy(EVertex,
+                                                                           (d.fThetaLight) * TMath::DegToRad());
+                        },
+                        {"MergerData", "EVertex", "EBeam"})
             .DefineSlot("ThetaCM",
                         [&](unsigned int slot, const ActRoot::MergerData& d, double EVertex, double EBeam)
                         {
@@ -152,7 +165,22 @@ void Pipe2_Ex(const std::string& beam, const std::string& target, const std::str
                                                                           (d.fThetaLight) * TMath::DegToRad()) *
                                    TMath::RadToDeg();
                         },
-                        {"MergerData", "EVertex", "EBeam"});
+                        {"MergerData", "EVertex", "EBeam"})
+            .DefineSlot("Rec_ThetaCM",
+                        [&](unsigned int slot, const ActRoot::MergerData& d, double EVertex, double EBeam)
+                        {
+                            // For some events p is imaginary... poor reconstruction of who knows
+                            double E {EBeam + pb.GetMass()};
+                            double p {TMath::Sqrt(E * E - pb.GetMass() * pb.GetMass())};
+                            bool isOk {std::isfinite(p)};
+                            if(!isOk)
+                                return 0.;
+                            vkins[slot].SetBeamEnergy(EBeam);
+                            return vkins[slot].ReconstructTheta3CMFromLab(EVertex,
+                                                                          (d.fThetaLight) * TMath::DegToRad()) *
+                                   TMath::RadToDeg();
+                        },
+                        {"MergerData", "EVertex", "Rec_EBeam"});
 
     // Define range of heavy particle
     def = def.Define("RangeHeavy", [&](ActRoot::MergerData& d) { return d.fRP.X() + d.fHeavy.fTL; }, {"MergerData"});
@@ -295,7 +323,8 @@ void Pipe2_Ex(const std::string& beam, const std::string& target, const std::str
 
     // Save only the Ep_Range selection with silicons
     auto outfile {TString::Format("./Outputs/tree_ex_%s_%s_%s.root", beam.c_str(), target.c_str(), light.c_str())};
-    nodeL1GatedSil.Snapshot("Final_Tree", outfile);
+    nodeL1GatedSil.Define("IsL1", [](ActRoot::MergerData& mer) { return mer.fLight.IsL1(); }, {"MergerData"})
+        .Snapshot("Final_Tree", outfile);
     std::cout << "Saving Final_Tree in " << outfile << '\n';
 
     // std::ofstream streamer {"./debug_ep_range.dat"};

@@ -19,6 +19,8 @@
 void Pipe1_PID(const std::string& beam, const std::string& target, const std::string& light)
 {
     std::string dataconf {"./../configs/data.conf"};
+    if(beam == "20Mg")
+        dataconf = "./../configs/data_20Mg.conf";
 
     // Read data
     ActRoot::DataManager dataman {dataconf, ActRoot::ModeType::EMerge};
