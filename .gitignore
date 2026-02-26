@@ -2,8 +2,6 @@
 *.png
 *.root
 
-configs/data.conf
-
 .clang-format
 
 # CMake things

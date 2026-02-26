@@ -35,7 +35,7 @@ ReadFile(const std::string& file, const std::string& key1 = "Y", const std::stri
     return {m1, m2};
 }
 
-TH1D* ScaleWithFunc(TH1D* h, TF1* f)
+TH1D* ScaleWithFunc(TH1D* h, TF1* f, double width = -1)
 {
     TString name {h->GetName()};
     name += "_norm";
@@ -47,6 +47,14 @@ TH1D* ScaleWithFunc(TH1D* h, TF1* f)
         auto x {h->GetBinCenter(bin)};
         auto y {h->GetBinContent(bin)};
         auto ynew {y / std::abs(f->Eval(x))};
+        // Restrict scaling to width if width != -1
+        if(width > 0)
+        {
+            if(x <= (f->GetXmin() - width))
+                ynew = 0;
+            if(x >= (f->GetXmax() + width))
+                ynew = 0;
+        }
         ret->SetBinContent(bin, ynew);
     }
     return ret;
@@ -150,8 +158,6 @@ TF1* FindBestFit(TH1D* h, double width, double step, TString func = "expo")
         for(double b = maxguess - width; b <= maxguess + width; b += step)
         {
             auto res {h->Fit(func, "0QSM", "", a, b)};
-            if(!res.Get())
-                continue;
             chis.push_back(res.Get()->Chi2());
             ranges.push_back({a, b});
         }
