@@ -103,12 +103,12 @@ void DistPlot()
     }
 
     // Save
-    // auto out {std::make_unique<TFile>("./Outputs/Dists/sms.root", "recreate")};
-    // out->WriteObject(&dists, "dists");
-    // for(int i = 0; i < sms.size(); i++)
-    // {
-    //     auto name {TString::Format("sm%d", i)};
-    //     sms[i]->SetName(name.Data());
-    //     sms[i]->Write();
-    // }
+    auto out {std::make_unique<TFile>("./Outputs/sms.root", "recreate")};
+    out->WriteObject(&dists, "dists");
+    for(int i = 0; i < sms.size(); i++)
+    {
+        auto name {TString::Format("sm%d", i)};
+        sms[i]->SetName(name.Data());
+        sms[i]->Write();
+    }
 }

@@ -129,9 +129,9 @@ void DoFits(TString mode)
     cs->cd(2);
     gsz->Draw("apl");
 
-    // auto* cm {new TCanvas("cm", "Sil matrix")};
-    // auto name {TString::Format("./Outputs/%s_matrix.root", mode.Data())};
-    // std::cout << "Saving matrix at : " << name << '\n';
-    // smatrix->Write(name.Data());
-    // smatrix->Draw(false);
+    auto* cm {new TCanvas("cm", "Sil matrix")};
+    auto name {TString::Format("./Outputs/%s_matrix.root", mode.Data())};
+    std::cout << "Saving matrix at : " << name << '\n';
+    smatrix->Write(name.Data());
+    smatrix->Draw(false);
 }

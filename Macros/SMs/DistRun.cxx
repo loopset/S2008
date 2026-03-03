@@ -8,6 +8,7 @@
 
 #include "TFile.h"
 #include "TH1.h"
+#include "TStopwatch.h"
 #include "TString.h"
 
 #include "Math/Point3Dfwd.h"
@@ -23,7 +24,7 @@ void DistRun()
 {
     ROOT::EnableImplicitMT();
 
-    ActRoot::DataManager data {"../../configs/data.conf", ActRoot::ModeType::EMerge};
+    ActRoot::DataManager data {"../../configs/data_all.conf", ActRoot::ModeType::EMerge};
     auto chain {data.GetJoinedData()};
 
     ROOT::RDataFrame df {*chain};
@@ -34,7 +35,7 @@ void DistRun()
     // Define distances in mm
     double base {256.};
     std::vector<double> dists;
-    for(double d = 85; d < 115; d += 2)
+    for(double d = 95; d < 110; d += 1.5)
         dists.push_back(base + d);
 
     int xbins {200};
@@ -44,6 +45,8 @@ void DistRun()
     // Save
     auto f {std::make_unique<TFile>("./Outputs/histos.root", "recreate")};
     f->WriteObject(&dists, "dists");
+    TStopwatch timer {};
+    timer.Start();
     for(const auto& dist : dists)
     {
         std::cout << "Distance : " << dist << '\n';
@@ -105,4 +108,6 @@ void DistRun()
                 h.Merge()->Write();
         f->cd();
     }
+    timer.Stop();
+    timer.Print();
 }

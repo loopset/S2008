@@ -27,7 +27,7 @@ void GetMatrices(TString mode)
 
     // Read data
     ROOT::EnableImplicitMT();
-    ActRoot::DataManager datman {"../../configs/data.conf", ActRoot::ModeType::EMerge};
+    ActRoot::DataManager datman {"../../configs/data_all.conf", ActRoot::ModeType::EMerge};
     auto chain {datman.GetChain()};
     ROOT::RDataFrame df {*chain};
 

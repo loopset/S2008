@@ -29,8 +29,8 @@ const TH2DModel KinSimu {"hKin", "Simulation kinematics;#theta_{Lab} [#circ];E_{
 
 const TH2DModel KinCM {"hKinCM", "CM kinematics;#theta_{CM} [#circ];E_{Vertex} [MeV]", 400, 0, 180, 400, 0, 20};
 
-const TH1DModel Ex {
-    "hEx", TString::Format("Excitation energy;E_{x} [MeV];Counts / %.f keV", (10. - (-5.)) / 200 * 1e3), 200, -5, 10};
+const TH1DModel Ex {"hEx", TString::Format("Excitation energy;E_{x} [MeV];Counts / %.f keV", (10. - (-5.)) / 200 * 1e3),
+                    200, -5, 10};
 
 const TH1DModel ThetaCM {"hThetaCM", "ThetaCM;#theta_{CM} [#circ]", 600, 0, 180};
 
@@ -65,12 +65,15 @@ const TH2DModel RPxECM {"hRPxECM", "ECM vs RP.X;RP.X [mm];E_{CM} [MeV]", 200, 0,
 const TH1DModel ECM {"hECM", "E_{CM};E_{CM} [MeV];Counts / 10 keV", 500, 0, 5};
 
 const TH2DModel ThetaCMECM {
-    "hThetaCMECM", "#theta_{CM} vs E_{CM};#theta_{CM} [#circ];E_{CM} [MeV]", 400, 0, 180, 100, 0, 5};
+    "hThetaCMECM", "#theta_{CM} vs E_{CM};#theta_{CM} [#circ];E_{CM} [MeV]", 400, 0, 180, 160, 0, 8};
 
 const TH2DModel EpRMg {"hEpRMg", "Ep vs R Mg; Total path ^{20}Mg [mm];E_{light} [MeV]", 150, 0, 300, 300, 0, 20};
 
 const TH1DModel EBeam {"hEBeam", "Beam energy;E_{Beam} [MeV]", 180, 0, 90};
 
+const TH2DModel EBeamRPx {"hEBeamRPx", "Beam energy;RP.X [mm];E_{Beam} [MeV]", 400, 0, 270, 180, 0, 90};
+
+const TH2DModel Eff2D {"hEff2D", "2D efficiency;#theta_{CM} [#circ];E_{CM} [MeV]", 720, 0, 180, 320, 0, 8};
 template <typename T>
 T ChangeTitle(T model, const TString& title, const TString& label = "");
 } // namespace HistConfig

@@ -15,7 +15,7 @@
 
 void DistDebug()
 {
-    auto f {new TFile {"./Outputs/Dists/sms.root"}};
+    auto f {new TFile {"./Outputs/sms.root"}};
     auto dists {*f->Get<std::vector<double>>("dists")};
     std::vector<ActPhysics::SilMatrix*> sms;
     for(int i = 0; i < dists.size(); i++)
@@ -24,19 +24,20 @@ void DistDebug()
         if(!sms.back())
             std::cout << "Nullptr" << '\n';
     }
+    std::vector<int> sils {1, 2, 4, 7};
 
     // Get heights per distance
     auto* gm {new TGraphErrors};
-    gm->SetTitle("Mean height [1,4,7];Dist l0 [mm];Height [mm]");
+    gm->SetTitle("Mean height;Dist l0 [mm];Height [mm]");
     auto* gs {new TGraphErrors};
-    gs->SetTitle("Mean deviation [1,4,7];Dist l0 [mm];Deviation [mm]");
+    gs->SetTitle("Mean deviation;Dist l0 [mm];Deviation [mm]");
     int idx {};
     for(auto& sm : sms)
     {
         std::cout << "dist : " << dists[idx] << '\n';
         // Compute std dev
         std::vector<double> heights, devs;
-        for(const auto& sil : {1, 4, 7})
+        for(const auto& sil : sils)
         {
             auto height {sm->GetHeight(sil)};
             heights.push_back(height);

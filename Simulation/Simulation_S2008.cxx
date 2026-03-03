@@ -1,0 +1,640 @@
+#include "ActColors.h"
+#include "ActCutsManager.h"
+#include "ActKinematicGenerator.h"
+#include "ActKinematics.h"
+#include "ActParticle.h"
+#include "ActRunner.h"
+#include "ActSRIM.h"
+#include "ActSilMatrix.h"
+#include "ActSilSpecs.h"
+#include "ActTPCParameters.h"
+
+#include "Rtypes.h"
+
+#include "TCanvas.h"
+#include "TEfficiency.h"
+#include "TFile.h"
+#include "TH2.h"
+#include "TMath.h"
+#include "TProfile2D.h"
+#include "TROOT.h"
+#include "TRandom.h"
+#include "TRandom3.h"
+#include "TStopwatch.h"
+#include "TString.h"
+#include "TTree.h"
+
+#include "Math/Point3D.h"
+#include "Math/Vector3D.h"
+#include "Math/Vector3Dfwd.h"
+
+#include <cmath>
+#include <iostream>
+#include <memory>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <tuple>
+#include <utility>
+#include <vector>
+
+#include "/media/Data/S2008/PostAnalysis/Gates.cxx"
+#include "/media/Data/S2008/PostAnalysis/HistConfig.h"
+#include "/media/Data/S2008/PostAnalysis/Utils.cxx"
+
+using XYZPoint = ROOT::Math::XYZPoint;
+using XYZPointF = ROOT::Math::XYZPointF;
+using XYZVector = ROOT::Math::XYZVector;
+using XYZVectorF = ROOT::Math::XYZVectorF;
+
+void ApplyNaN(double& val, double thresh = 0, const std::string& comment = "stopped")
+{
+    if(val <= thresh)
+        val = std::nan(comment.c_str());
+}
+
+std::pair<XYZPoint, XYZPoint> SampleVertex(double meanZ, double sigmaZ, TH3D* h, double lengthX)
+{
+
+    // X is always common for both manners
+    double Xstart {0};
+    double Xrp {gRandom->Uniform() * lengthX};
+    // Y depends completely on the method of calculation
+    double Ystart {-1};
+    double Yrp {-1};
+    // Z of beam at entrance
+    double Zstart {gRandom->Gaus(meanZ, sigmaZ)};
+    double Zrp {-1};
+    // Ystart in this case is sampled from the histogram itself!
+    double thetaXY {};
+    double thetaXZ {};
+    h->GetRandom3(Ystart, thetaXY, thetaXZ);
+    // Mind that Y is not centred in the histogram value!
+    // Rp values are computed as follows:
+    Yrp = Ystart - Xrp * TMath::Tan(thetaXY * TMath::DegToRad());
+    Zrp = Zstart - Xrp * TMath::Tan(thetaXZ * TMath::DegToRad());
+    XYZPoint start {Xstart, Ystart, Zstart};
+    XYZPoint vertex {Xrp, Yrp, Zrp};
+    return {std::move(start), std::move(vertex)};
+}
+
+void ApplySilRes(double& e, double sigma)
+{
+    e = gRandom->Gaus(e, sigma * TMath::Sqrt(e / 5.5));
+}
+
+double AngleWithNormal(const ROOT::Math::XYZVector& dir, const ROOT::Math::XYZVectorF& normal)
+{
+    auto dot {dir.Unit().Dot(normal.Unit())};
+    return TMath::ACos(dot);
+}
+
+
+void Simulation_S2008(const std::string& beam, const std::string& target, const std::string& light, int neutronPS,
+                      int protonPS, double T1, double Ex, bool standalone, int thread = -1)
+{
+    // set batch mode if not an independent function
+    if(!standalone)
+        gROOT->SetBatch(true);
+
+    bool preliminary {true};
+
+    // Resolutions
+    const double sigmaSil {0.060 / 2.355};
+    const double sigmaPercentBeam {0};
+    const double sigmaAngleLight {0.95 / 2.355};
+    // Parameters of beam in mm
+    // Center in Z is defined from silicon matrices
+    const double zVertexSigma {2.84}; // mm
+
+    // number of iterations
+    const int iterations {static_cast<int>(standalone ? 1e7 : 3e7)};
+
+    // Which parameters will be activated
+    bool stragglingInGas {true};
+    bool stragglingInSil {true};
+    bool silResolution {true};
+    bool thetaResolution {true};
+
+    // TPC basic parameters
+    ActRoot::TPCParameters tpc {"Actar"};
+
+    // Vertex sampling
+    auto beamfile {std::make_unique<TFile>("/media/Data/E796v2/Macros/Emittance/Outputs/histos.root")};
+    auto* hBeam {beamfile->Get<TH3D>("h3d")};
+    if(!hBeam)
+        throw std::runtime_error("Simulation_S2008(): Could not load beam emittance histogram");
+    hBeam->SetDirectory(nullptr);
+    beamfile.reset();
+
+    // Kinematics
+    ActPhysics::Particle p1 {beam};
+    ActPhysics::Particle p2 {target};
+    ActPhysics::Particle p3 {light};
+    // Automatically compute 4th particle
+    ActPhysics::Kinematics kaux {p1, p2, p3};
+    ActPhysics::Particle p4 {kaux.GetParticle(4)};
+    // Binary kinematics generator
+    ActSim::KinematicGenerator kingen {p1, p2, p3, p4, (protonPS > 0 ? protonPS : 0), (neutronPS > 0 ? neutronPS : 0)};
+    kingen.Print();
+    auto* kin {kingen.GetBinaryKinematics()};
+
+    // Silicon specs
+    auto* specs {new ActPhysics::SilSpecs};
+    specs->ReadFile("/media/Data/S2008/configs/silspecs.conf");
+    // Silicon EFFECTIVE matrix
+    ActPhysics::SilMatrix* sm {};
+    // Set reference position and offset along Z!
+    double silCentre {};
+    double beamOffset {}; // determined from emittance calculations
+    // Set layers
+    TString firstLayer {};
+    TString secondLayer {};
+    if(preliminary)
+    {
+        sm = S2008::GetFrontMatrix();
+        silCentre = sm->GetMeanZ({4, 7});
+        specs->GetLayer("f0").ReplaceWithMatrix(sm);
+        beamOffset = -5.40; // mm
+        specs->EraseLayer("l0");
+        specs->EraseLayer("r0");
+        firstLayer = "f0";
+        secondLayer = "f1";
+    }
+    else
+    {
+        throw std::runtime_error("Preliminary: only simulating f0");
+    }
+    double zVertexMean {silCentre + beamOffset};
+
+    // CUTS ON SILICON ENERGY, depending on particle
+    // from the graphical PID cut
+    ActRoot::CutsManager<std::string> cuts;
+    cuts.ReadCut(
+        light,
+        TString::Format("/media/Data/S2008/PostAnalysis/Cuts/pid_%s_f0_%s.root", light.c_str(), beam.c_str()).Data());
+    std::pair<double, double> eLoss0Cut;
+    if(cuts.GetCut(light))
+    {
+        eLoss0Cut = cuts.GetXRange(light);
+        std::cout << BOLDGREEN << "-> ESil range for " << light << ": [" << eLoss0Cut.first << ", " << eLoss0Cut.second
+                  << "] MeV" << RESET << '\n';
+    }
+    else
+    {
+        std::cout << BOLDRED << "Simulation_S2008(): could not read PID cut for " << light
+                  << " -> using default eLoss0Cut" << RESET << '\n';
+        eLoss0Cut = {0, 1000};
+    }
+
+    // Histograms
+    TH1::AddDirectory(false);
+    // To compute a fine-grain efficiency, we require at least a binning width of 0.25 degrees!
+    auto hThetaCM {HistConfig::ThetaCM.GetHistogram()};
+    auto hThetaCMAll {HistConfig::ChangeTitle(HistConfig::ThetaCM, "ThetaCM all", "All").GetHistogram()};
+    // And also efficiency in LAB!
+    auto hThetaLabAll {HistConfig::ChangeTitle(HistConfig::ThetaCM, "ThetaLab all", "LabAll").GetHistogram()};
+    auto hThetaLab {HistConfig::ChangeTitle(HistConfig::ThetaCM, "ThetaLab", "Lab").GetHistogram()};
+    auto hDistF0 {HistConfig::ChangeTitle(HistConfig::TL, "Distance to F0").GetHistogram()};
+    auto hKinVertex {HistConfig::ChangeTitle(HistConfig::KinSimu, "Kinematics at vertex").GetHistogram()};
+    auto hKinSampled {HistConfig::ChangeTitle(HistConfig::KinSimu, "Sampled kinematics").GetHistogram()};
+    auto hSP {HistConfig::SP.GetHistogram()};
+    auto hEexAfter {HistConfig::ChangeTitle(HistConfig::Ex, "Ex after resolutions").GetHistogram()};
+    auto hSPTheta {std::make_unique<TProfile2D>("hSPTheta", "SP vs #theta_{CM};Y [mm];Z [mm];#theta_{CM} [#circ]", 75,
+                                                0, 300, 75, 0, 300)};
+    auto hRP {HistConfig::RP.GetHistogram()};
+    auto hRPz {std::make_unique<TH2D>("hRPz", "RP;Y [mm];Z [mm]", 550, 0, 256, 550, 0, 256)};
+    // Debug histograms
+    auto hDeltaE {
+        std::make_unique<TH2D>("hDeltaEE", "#Delta E - E;E_{in} [MeV];#Delta E_{0} [MeV]", 300, 0, 60, 300, 0, 60)};
+    auto hELoss0 {std::make_unique<TH2D>("hELoss0", "ELoss0;E_{in} [MeV];#Delta E_{0} [MeV]", 200, 0, 40, 200, 0, 40)};
+    auto hThetaLabNormal {std::make_unique<TH2D>("hThetaLabNormal",
+                                                 "Theta in sil corr;#theta_{Lab} [#circ];#theta_{Normal Si} [#circ]",
+                                                 250, 0, 90, 250, 0, 90)};
+    auto hRPxEBeam {HistConfig::EBeamRPx.GetHistogram()};
+
+    // Phi efficiency
+    auto hPhiAll {std::make_unique<TH1D>("hPhiAll", "#phi eff;#phi [#circ];", 400, 0, 360)};
+    auto hPhiLab {std::make_unique<TH1D>("hPhiLab", "#phi eff;#phi [#circ];", 400, 0, 360)};
+
+    // 3D efficiency
+    auto hEffAll {HistConfig::Eff2D.GetHistogram()};
+    auto hEffAfter {HistConfig::Eff2D.GetHistogram()};
+    hEffAfter->SetTitle("After cuts");
+
+    // Load SRIM tables
+    // The name of the file sets particle + medium
+    auto* srim {new ActPhysics::SRIM()};
+    srim->ReadTable("light", "/media/Data/S2008/Calibrations/SRIM/1H_800mbar_95-5.txt"); // always 1H at 800 mbar?
+                                                                                         // pressure will change
+    srim->ReadTable("beam",
+                    TString::Format("/media/Data/S2008/Calibrations/SRIM/%s_800mbar_95-5.txt", beam.c_str()).Data());
+    srim->ReadTable("lightInSil", "/media/Data/S2008/Calibrations/SRIM/1H_silicon.txt");
+
+    // Random generator
+    gRandom->SetSeed();
+    // Runner: contains utility functions to execute multiple actions
+    ActSim::Runner runner(nullptr, nullptr, gRandom, 0);
+
+    // Output from simulation!
+    auto aux {thread != -1 ? TString::Format("_%d", thread).Data() : ""};
+    auto filename {TString::Format("/media/Data/S2008/Simulation/Outputs/simu_%s_%s_%s%s.root", beam.c_str(),
+                                   target.c_str(), light.c_str(), aux)};
+    // We only store a few things in the TTree
+    // 1-> Excitation energy
+    // 2-> Theta in CM frame
+    // 3-> Weight of the generator: for three-body reactions (phase spaces) the other two
+    // variables need to be weighted by this value. For binary reactions, weight = 1
+    // 4-> Energy at vertex
+    // 5-> Theta in Lab frame
+    auto* outFile {new TFile(filename, standalone ? "read" : "recreate")};
+    auto* outTree {new TTree("SimulationTTree", "A TTree containing only our Eex obtained by simulation")};
+    if(standalone)
+        outTree->SetDirectory(nullptr);
+    ROOT::Math::XYZPoint sp_tree {};
+    outTree->Branch("SP", &sp_tree);
+    double theta3CM_tree {};
+    outTree->Branch("theta3CM", &theta3CM_tree);
+    double Ex_tree {};
+    outTree->Branch("Eex", &Ex_tree);
+    double weight_tree {};
+    outTree->Branch("weight", &weight_tree);
+    double EVertex_tree {};
+    outTree->Branch("EVertex", &EVertex_tree);
+    double theta3Lab_tree {};
+    outTree->Branch("theta3Lab", &theta3Lab_tree);
+    double rpx_tree {};
+    outTree->Branch("RPx", &rpx_tree);
+    int silIdx_tree {};
+    outTree->Branch("SilIdx", &silIdx_tree);
+    double esil0_tree {};
+    outTree->Branch("ESil0", &esil0_tree);
+    // Lorentz vectors
+    std::vector<ROOT::Math::XYZTVector> lor_tree {};
+    outTree->Branch("Lor", &lor_tree);
+    XYZVector beta_tree {};
+    outTree->Branch("Beta", &beta_tree);
+
+    //---- SIMULATION STARTS HERE
+    ROOT::EnableImplicitMT();
+
+    // timer
+    TStopwatch timer {};
+    timer.Start();
+    // print fancy info
+    std::cout << BOLDMAGENTA << "Running for Ex = " << Ex << " MeV" << RESET << '\n';
+    std::cout << BOLDGREEN;
+    const int percentPrint {5};
+    int step {iterations / (100 / percentPrint)};
+    int nextPrint {step};
+    int percent {};
+    int lightIn {};
+    int heavyIn {};
+    for(long int reaction = 0; reaction < iterations; reaction++)
+    {
+        // Print progress
+        if(reaction >= nextPrint)
+        {
+            percent = 100 * (reaction + 1) / iterations;
+            int nchar {percent / percentPrint};
+            std::cout << "\r" << std::string((int)(percent / percentPrint), '|') << percent << "%";
+            std::cout.flush();
+            nextPrint += step;
+        }
+        // 1-> Sample vertex
+        auto [start, vertex] {SampleVertex(zVertexMean, zVertexSigma, hBeam, tpc.X())};
+
+        // 2-> Beam energy according to its sigma
+        auto TBeam {runner.RandomizeBeamEnergy(
+            T1 * p1.GetAMU(),
+            sigmaPercentBeam * T1 * p1.GetAMU())}; // T1 in Mev / u * mass of beam in u = total kinetic energy
+        // And slow according to distance travelled
+        auto distToVertex {(vertex - start).R()};
+        TBeam = srim->SlowWithStraggling("beam", TBeam, distToVertex);
+        if(TBeam <= 0)
+            continue;
+        hRPxEBeam->Fill(vertex.X(), TBeam);
+
+        // 3-> Run kinematics!
+        kingen.SetBeamAndExEnergies(TBeam, Ex);
+        double theta3Lab {};
+        double phi3Lab {};
+        double T3Lab {};
+        double theta4Lab {};
+        double phi4Lab {};
+        double weight {1};
+        // Uniform phi always and it is the same for CM and Lab
+        auto phiCM {gRandom->Uniform(0, TMath::TwoPi())};
+        // thetaCM following xs or not
+        double thetaCM = TMath::ACos(gRandom->Uniform(-1, 1));
+        kin->ComputeRecoilKinematics(thetaCM, phiCM);
+        // Set info
+        theta3Lab = kin->GetTheta3Lab();
+        phi3Lab = phiCM;
+        T3Lab = kin->GetT3Lab();
+        theta4Lab = kin->GetTheta4Lab();
+        phi4Lab = phiCM;
+        // Compute ECM
+        double ECM {TBeam * (p2.GetMass()) / (p1.GetMass() + p2.GetMass())};
+
+        // Efficiencies
+        double thetaCMEff {kin->ReconstructTheta3CMFromLab(T3Lab, theta3Lab)};
+        hThetaCMAll->Fill(thetaCMEff * TMath::RadToDeg());
+        double theta3LabEff {theta3Lab}; // before implementing resolution in angle
+        hThetaLabAll->Fill(theta3LabEff * TMath::RadToDeg());
+        hPhiAll->Fill(phi3Lab * TMath::RadToDeg());
+        hEffAll->Fill(thetaCMEff * TMath::RadToDeg(), ECM);
+        hRP->Fill(vertex.X(), vertex.Y());
+
+        // 4-> Include thetaLab resolution to compute thetaCM and Ex afterwards
+        if(thetaResolution)
+            theta3Lab = gRandom->Gaus(theta3Lab, sigmaAngleLight * TMath::DegToRad());
+
+        // 5-> Propagate track from vertex to silicon wall using SilSpecs class
+        // And using the angle with the uncertainty already in
+        ROOT::Math::XYZVector dirBeamFrame {TMath::Cos(theta3Lab), TMath::Sin(theta3Lab) * TMath::Sin(phi3Lab),
+                                            TMath::Sin(theta3Lab) * TMath::Cos(phi3Lab)};
+        ROOT::Math::XYZVector heavyBeamFrame {TMath::Cos(theta4Lab), TMath::Sin(theta4Lab) * TMath::Sin(phi4Lab),
+                                              TMath::Sin(theta4Lab) * TMath::Cos(phi4Lab)};
+        // Declare beam direction
+        auto beamDir {(vertex - start).Unit()};
+        // Rotate to world = geometry frame
+        auto dirWorldFrame {runner.RotateToWorldFrame(dirBeamFrame, beamDir)};
+        auto heavyWorldFrame {runner.RotateToWorldFrame(heavyBeamFrame, beamDir)};
+        // Light particle
+        auto [silIndex0, silPoint0InMM] {specs->FindSPInLayer(firstLayer.Data(), vertex, dirWorldFrame)};
+
+        // skip tracks that doesn't reach silicons or are not in SiliconMatrix indexes
+        if(silIndex0 == -1 || !(sm->IsInMatrix(silIndex0)))
+            continue;
+        lightIn++;
+
+        // Heavy particle
+        // Only for front reactions, since we have verified that for l0 doesnt apply
+        auto [heavyIndex0, heavyPoint0] {specs->FindSPInLayer("f0", vertex, heavyWorldFrame)};
+        if(heavyIndex0 != -1)
+        {
+            // This means we would measure multiplicity two in the layer -> skip event
+            // We do not consider ELosses in gas bc heavy particle has always a large energy
+            // that wont stop it on the gas
+            // std::cout << "=========================" << '\n';
+            // std::cout << "Vertex : " << vertex << '\n';
+            // std::cout << "SP : " << heavyPoint0 << '\n';
+            // std::cout << "Heavy reached layer theta: " << theta4Lab * TMath::RadToDeg() << '\n';
+            heavyIn++;
+            continue;
+        }
+
+        // Apply SilMatrix cut
+        if(firstLayer.Contains("f"))
+        {
+            if(!sm->IsInside(silIndex0, silPoint0InMM.Y(), silPoint0InMM.Z()))
+                continue;
+        }
+        else
+        {
+            if(!sm->IsInside(silIndex0, silPoint0InMM.X(), silPoint0InMM.Z()))
+                continue;
+        }
+        // Define SP distance
+        auto distance0 {(vertex - silPoint0InMM).R()};
+        auto T3EnteringSil {srim->SlowWithStraggling("light", T3Lab, distance0)};
+        ApplyNaN(T3EnteringSil);
+        // nan if stopped in gas
+        if(!std::isfinite(T3EnteringSil))
+            continue;
+
+        // First layer of silicons
+        auto& layer {specs->GetLayer(firstLayer.Data())};
+        // Angle with normal
+        auto normal {layer.GetNormal()};
+        auto angleNormal0 {AngleWithNormal(dirWorldFrame, normal)};
+        auto T3AfterSil0 {
+            srim->SlowWithStraggling("lightInSil", T3EnteringSil, layer.GetUnit().GetThickness(), angleNormal0)};
+        auto eLoss0 {T3EnteringSil - T3AfterSil0};
+        // Apply resolution
+        if(T3AfterSil0 != 0)
+        {
+            ApplySilRes(eLoss0, sigmaSil);
+            T3AfterSil0 = T3EnteringSil - eLoss0;
+        }
+        ApplyNaN(eLoss0, layer.GetThresholds().at(1), "thresh"); // assuming common threshold for all
+        // nan if bellow threshold
+        if(!std::isfinite(eLoss0))
+            continue;
+        // Debug histograms
+        hDeltaE->Fill(T3EnteringSil, eLoss0);
+        hThetaLabNormal->Fill(theta3Lab * TMath::RadToDeg(), angleNormal0 * TMath::RadToDeg());
+
+        // 6-> Same but to silicon layer 1 if exists
+        double T3AfterInterGas {};
+        double distance1 {};
+        int silIndex1 {};
+        ROOT::Math::XYZPoint silPoint1 {};
+        double eLoss1 {};
+        double T3AfterSil1 {};
+        bool isPunch {};
+        if(T3AfterSil0 > 0 && (firstLayer == "f0"))
+        {
+            // first, propagate in gas
+            auto [silIndex1, silPoint1InMM] {specs->FindSPInLayer(secondLayer.Data(), vertex, dirWorldFrame)};
+            if(silIndex1 == -1)
+                continue;
+
+            distance1 = (silPoint1InMM - silPoint0InMM).R();
+            T3AfterInterGas = srim->SlowWithStraggling("light", T3AfterSil0, distance1);
+            ApplyNaN(T3AfterInterGas);
+            if(!std::isfinite(T3AfterInterGas))
+                continue;
+
+            // now, silicon if we have energy left
+            if(T3AfterInterGas > 0)
+            {
+                // For S2008 angleNormal0 = angleNormal1 but this is not general
+                auto angleNormal1 {angleNormal0};
+                T3AfterSil1 = srim->SlowWithStraggling("lightInSil", T3AfterInterGas,
+                                                       specs->GetLayer(secondLayer.Data()).GetUnit().GetThickness(),
+                                                       angleNormal1);
+                auto eLoss1 {T3AfterInterGas - T3AfterSil1};
+                ApplySilRes(eLoss1, sigmaSil);
+                T3AfterSil1 = T3AfterInterGas - eLoss1;
+                ApplyNaN(eLoss1, specs->GetLayer(secondLayer.Data()).GetThresholds().at(1), "thresh");
+                isPunch = true;
+            }
+        }
+
+        // 7 -> Reconstruct energy at vertex
+        // INFO: using reconstruction SRIM
+        double EBefSil0 {};
+        if(isPunch && T3AfterSil1 == 0 && std::isfinite(eLoss1))
+        {
+            double EAfterSil0 {srim->EvalInitialEnergy("light", eLoss1, distance1)};
+            EBefSil0 = eLoss0 + EAfterSil0;
+        }
+        else if(!isPunch && T3AfterSil0 == 0)
+            EBefSil0 = eLoss0;
+        else
+            EBefSil0 = -1;
+
+        // 7->
+        // we are ready to reconstruct Eex with all resolutions implemented
+        //(d,light) is investigated gating on Esil1 = 0!
+        // bool cutEAfterSil0 {EBefSil0 != -1 && !isPunch};
+        bool cutEAfterSil0 {T3AfterSil0 == 0};
+        bool cutELoss0 {eLoss0Cut.first <= eLoss0 && eLoss0 <= eLoss0Cut.second};
+        if(cutEAfterSil0 && cutELoss0) // fill histograms
+        {
+            auto T3Recon {srim->EvalInitialEnergy("light", EBefSil0, distance0)};
+            auto ExAfter {kin->ReconstructExcitationEnergy(T3Recon, theta3Lab)};
+            auto thetaCM {kin->ReconstructTheta3CMFromLab(T3Recon, theta3Lab)};
+
+            // fill histograms
+            hDistF0->Fill(distance0);
+            hKinSampled->Fill(theta3LabEff * TMath::RadToDeg(), T3Lab);
+            hKinVertex->Fill(theta3Lab * TMath::RadToDeg(), T3Recon);
+            hEexAfter->Fill(ExAfter, weight);
+            if(firstLayer.Contains("f"))
+            {
+                hSP->Fill(silPoint0InMM.Y(), silPoint0InMM.Z());
+                hSPTheta->Fill(silPoint0InMM.Y(), silPoint0InMM.Z(), thetaCM * TMath::RadToDeg());
+                hRPz->Fill(vertex.Y(), vertex.Z());
+            }
+            else
+            {
+                hSP->Fill(silPoint0InMM.X(), silPoint0InMM.Z());
+                hSPTheta->Fill(silPoint0InMM.X(), silPoint0InMM.Z(), thetaCM * TMath::RadToDeg());
+                hRPz->Fill(vertex.X(), vertex.Z());
+            }
+            // RP histogram
+            hELoss0->Fill(T3EnteringSil, eLoss0);
+
+            // Efficiency computation: passed histogram
+            // WARNING: we must use the original thetaCM generated by the kinematic generator
+            // otherwise we could be biasing the efficiency: a original thetaCM could be reconstructed shifted
+            // (which makes sense after implementing resolutions) and hence contributing to another bin!!!
+            // Besides, this could cause errors when making the division: passed counts > 0 / all counts == 0!!
+            hThetaCM->Fill(thetaCMEff * TMath::RadToDeg());
+            hThetaLab->Fill(theta3LabEff * TMath::RadToDeg());
+            hPhiLab->Fill(phi3Lab * TMath::RadToDeg());
+            hEffAfter->Fill(thetaCMEff * TMath::RadToDeg(), ECM);
+
+            // Save lorentz vectors
+            lor_tree.clear();
+            for(int lor = 0, size = kingen.GetNt(); lor < size; lor++)
+            {
+                auto* vec {kingen.GetLorentzVector(lor)};
+                lor_tree.emplace_back(*vec);
+            }
+
+            // write to TTree
+            sp_tree = silPoint0InMM;
+            Ex_tree = ExAfter;
+            weight_tree = weight;
+            theta3CM_tree = thetaCM * TMath::RadToDeg();
+            EVertex_tree = T3Recon;
+            theta3Lab_tree = theta3Lab * TMath::RadToDeg();
+            rpx_tree = vertex.X();
+            silIdx_tree = silIndex0;
+            esil0_tree = eLoss0;
+            beta_tree = *kingen.GetBeta();
+            outTree->Fill();
+        }
+    }
+    std::cout << "\r" << std::string(100 / percentPrint, '|') << 100 << "%";
+    std::cout.flush();
+    std::cout << RESET << '\n';
+    std::cout << "HeavyIn/LightIn : " << (double)heavyIn / lightIn * 100 << '\n';
+
+    // Efficiencies as quotient of histograms in TEfficiency class
+    auto* eff {new TEfficiency(*hThetaCM, *hThetaCMAll)};
+    eff->SetNameTitle("eff", TString::Format("#theta_{CM} eff E_{x} = %.2f MeV", Ex));
+    auto* effLab {new TEfficiency(*hThetaLab, *hThetaLabAll)};
+    effLab->SetNameTitle("effLab", TString::Format("#theta_{Lab} eff E_{x} = %.2f MeV", Ex));
+    auto* effPhi {new TEfficiency(*hPhiLab, *hPhiAll)};
+    effPhi->SetNameTitle("effPhi", TString::Format("#phi_{Lab} eff E_{x} = %.2f MeV", Ex));
+    // Manual computation of efficiencies
+    auto* hEff2D {(TH2D*)hEffAfter->Clone("hEff2D")};
+    hEff2D->Divide(hEffAll.get());
+
+    // SAVING
+    if(!standalone)
+    {
+        outFile->cd();
+        outTree->Write();
+        eff->Write();
+        effLab->Write();
+        effPhi->Write();
+        hSP->Write("hSP");
+        hRP->Write("hRP");
+        hEff2D->Write("hEff2D");
+        outFile->Close();
+        delete outFile;
+        outFile = nullptr;
+    }
+
+    // plotting
+    if(standalone)
+    {
+        // draw theoretical kinematics
+        ActPhysics::Kinematics theokin {p1, p2, p3, p4, T1 * p1.GetAMU(), Ex};
+        auto* gtheo {theokin.GetKinematicLine3()};
+
+        auto* c0 {new TCanvas("c0", "Canvas for inspection 0")};
+        c0->DivideSquare(6);
+        c0->cd(1);
+        hThetaCM->DrawClone();
+        c0->cd(2);
+        hThetaCMAll->DrawClone();
+        c0->cd(3);
+        // hDistF0->DrawClone();
+        hKinSampled->DrawClone("colz");
+        gtheo->Draw("lp");
+        c0->cd(4);
+        // hThetaCMAll->DrawClone();
+        hRP->DrawClone("colz");
+        c0->cd(5);
+        hRPz->DrawClone("colz");
+        sm->DrawClone();
+        c0->cd(6);
+        hELoss0->DrawClone("colz");
+        // hThetaLabNormal->DrawClone("colz");
+
+        auto* c1 {new TCanvas("cAfter", "Canvas for inspection 1")};
+        c1->DivideSquare(6);
+        c1->cd(1);
+        hKinVertex->DrawClone("colz");
+        gtheo->Draw("same");
+        c1->cd(2);
+        hSP->DrawClone("col");
+        if(sm)
+            sm->Draw();
+        c1->cd(3);
+        hEexAfter->DrawClone("hist");
+        c1->cd(4);
+        eff->Draw("apl");
+        c1->cd(5);
+        // hSPTheta->DrawClone("colz");
+        // effLab->Draw("apl");
+        effPhi->Draw("apl");
+        c1->cd(6);
+        hDeltaE->DrawClone("colz");
+
+        auto* c2 {new TCanvas {"c2", "2D Eff canvas"}};
+        c2->DivideSquare(4);
+        TString opt {"colz"};
+        c2->cd(1);
+        hEffAll->DrawClone(opt);
+        c2->cd(2);
+        hEffAfter->DrawClone(opt);
+        c2->cd(3);
+        hEff2D->DrawClone(opt);
+        c2->cd(4);
+        hRPxEBeam->DrawClone("colz");
+    }
+
+    // deleting news
+    delete srim;
+
+    timer.Stop();
+    timer.Print();
+}

@@ -322,9 +322,11 @@ void Pipe2_Ex(const std::string& beam, const std::string& target, const std::str
 
 
     // Save only the Ep_Range selection with silicons
-    auto outfile {TString::Format("./Outputs/tree_ex_%s_%s_%s.root", beam.c_str(), target.c_str(), light.c_str())};
-    nodeL1GatedSil.Define("IsL1", [](ActRoot::MergerData& mer) { return mer.fLight.IsL1(); }, {"MergerData"})
-        .Snapshot("Final_Tree", outfile);
+    auto outfile {
+        TString::Format("./Outputs/tree_ex_%s_%s_%s_front.root", beam.c_str(), target.c_str(), light.c_str())};
+    // nodeL1GatedSil.Define("IsL1", [](ActRoot::MergerData& mer) { return mer.fLight.IsL1(); }, {"MergerData"})
+    //     .Snapshot("Final_Tree", outfile);
+    nodeEpFront.Snapshot("Final_Tree", outfile);
     std::cout << "Saving Final_Tree in " << outfile << '\n';
 
     // std::ofstream streamer {"./debug_ep_range.dat"};

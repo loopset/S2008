@@ -2,7 +2,6 @@
 
 #include "ActMergerDetector.h"
 
-#include <stdexcept>
 
 bool ActAlgorithm::ConfMergerPerRun::Run()
 {
@@ -10,10 +9,8 @@ bool ActAlgorithm::ConfMergerPerRun::Run()
     double vd {}; // drift velocity in mm/us
     if(fMergerData->fRun <= 38)
         vd = 6.756;
-    else if(fMergerData->fRun > 38 && fMergerData->fRun <= 64)
+    else // applies for both 20Mg and 20Na
         vd = 6.747;
-    else
-        throw std::runtime_error("ConfMergerPerRun::Run(): 20Na runs not yet implemented");
     // Compute factor
     auto factor {vd * 4 * 0.08}; // conversion factor
     fMergerDet->SetDriftFactor(factor);
