@@ -29,7 +29,7 @@ void Runner(TString what = "")
     {
         func = "Pipe0_Beam";
         gROOT->LoadMacro(path + func + ext);
-        gROOT->ProcessLine(func + "()");
+        gROOT->ProcessLine(func + TString::Format("(\"%s\")", beam.c_str()));
     }
     // PID
     if(what.Contains("1"))
