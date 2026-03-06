@@ -15,10 +15,7 @@
 
 #include <functional>
 #include <memory>
-#include <utility>
 #include <vector>
-
-#include "../../PostAnalysis/HistConfig.h"
 
 class DoubleXS
 {
@@ -218,7 +215,7 @@ void DoubleXS::Project(int cThresh)
             auto low {fHist->GetXaxis()->GetBinLowEdge(x)};
             auto up {fHist->GetXaxis()->GetBinUpEdge(x)};
             proj->SetTitle(
-                TString::Format("#theta_{CM} #in [%.2f,%.2f)#circ;E_{CM} [MeV];d#sigma/dE [mb/MeV]", low, up));
+                TString::Format("#theta_{CM} #in [%.2f,%.2f)#circ;E_{CM} [MeV];d#sigma/d#Omega [mb/sr]", low, up));
             fProjsECM.push_back(proj);
             idx++;
         }

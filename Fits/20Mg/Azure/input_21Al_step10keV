@@ -1,0 +1,50 @@
+<config>
+false                                                                                               #Perform A-Matrix Calculation
+/media/Data/S2008/Fits/20Mg/Azure/Outputs/                                                          #Full Path to Output Directory
+/media/Data/S2008/Fits/20Mg/Azure/Checks/                                                           #Full Path to Checks Directory
+none                                                                                                #Compond Nucleus Check
+none                                                                                                #Boundary Condition Check
+none                                                                                                #Data Check
+screen                                                                                              #Lo-Matrix and Penetrability Check
+none                                                                                                #Legendre Polynomial Check
+none                                                                                                #Coulomb Amplitudes Check
+none                                                                                                #Reaction Pathway Check
+none                                                                                                #Angular Distributions Check
+</config>
+<levels>
+ 0.5    1          1.5    1    1    1    1    0    1    1    1               67000  0.5    1    0    1            0       1      20    1   12         -1.1         -1.1    0    0          0.0     0     5.2            0            0       0
+
+ 0.5    1           20    1    1    1    1    0    2    1    0                   0  0.5    1    0    1            0       1      20    1   12         -1.1         -1.1    0    0          0.0     0     5.2            0            0       0
+
+ 1.5    1          2.3    1    1    1    1    4    3    1    1                  90  0.5    1    0    1            0       1      20    1   12         -1.1         -1.1    0    0          0.0     0     5.2            0            0       0
+
+ 1.5    1         4.68    1    1    1    1    4    4    1    0              783000  0.5    1    0    1            0       1      20    1   12         -1.1         -1.1    0    0          0.0     0     5.2            0            0       0
+
+ 1.5    1           20    1    1    1    1    4    5    1    0                   0  0.5    1    0    1            0       1      20    1   12         -1.1         -1.1    0    0          0.0     0     5.2            0            0       0
+
+ 2.5    1          1.1    1    1    1    1    4    6    1    1                0.05  0.5    1    0    1            0       1      20    1   12         -1.1         -1.1    0    0          0.0     0     5.2            0            0       0
+
+ 2.5    1         1.69    1    1    1    1    4    7    1    0                 190  0.5    1    0    1            0       1      20    1   12         -1.1         -1.1    0    0          0.0     0     5.2            0            0       0
+
+ 2.5    1           20    1    1    1    1    4    8    1    0                   0  0.5    1    0    1            0       1      20    1   12         -1.1         -1.1    0    0          0.0     0     5.2            0            0       0
+
+ 3.5   -1         6.95    1    1    1    1    6    9    1    0              273000  0.5    1    0    1            0       1      20    1   12         -1.1         -1.1    0    0          0.0     0     5.2            0            0       0
+
+ 3.5   -1           20    1    1    1    1    6   10    1    0                   0  0.5    1    0    1            0       1      20    1   12         -1.1         -1.1    0    0          0.0     0     5.2            0            0       0
+
+</levels>
+<segmentsData>
+</segmentsData>
+<segmentsTest>
+1              1              1              -1.1           6              0.1            145            145            0              1
+</segmentsTest>
+<targetInt>
+</targetInt>
+<lastRun>
+8960
+""
+""
+0 0
+0 ""
+-1. -1. -1.
+</lastRun>

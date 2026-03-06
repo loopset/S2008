@@ -1,0 +1,30 @@
+PHYSICAL LEVEL PARAMETERS (BOUNDARY CONDITION SET TO SHIFT AT E_LEVEL)
+
+J = 2.0+  E_level =   3.0653 MeV  ITERATIONS =     0
+  R =  1  l =   2  s =  0.0  G  =  1586.267800 keV        g_int =     1.073788 MeV^(1/2)   g_ext =  (0.000000,0.000000) MeV^(1/2) 
+  R =  2   G-T Beta Decay    B  =     0.000578            g_int =     0.000578             g_ext =  (0.000000,0.000000)
+  R =  2  Fermi Beta Decay   B  =     0.000844            g_int =     0.000844             g_ext =  (0.000000,0.000000)
+  R =  3   G-T Beta Decay    B  =     0.000630            g_int =     0.000630             g_ext =  (0.000000,0.000000)
+  R =  3  Fermi Beta Decay   B  =     0.000486            g_int =     0.000486             g_ext =  (0.000000,0.000000)
+
+J = 2.0+  E_level =  16.6260 MeV  ITERATIONS =     0
+  R =  1  l =   2  s =  0.0  G  =   108.100000 keV        g_int =     0.104667 MeV^(1/2)   g_ext =  (0.000000,0.000000) MeV^(1/2) 
+  R =  2   G-T Beta Decay    B  =     0.614348            g_int =     0.614348             g_ext =  (0.000000,0.000000)
+  R =  2  Fermi Beta Decay   B  =     0.242511            g_int =     0.242511             g_ext =  (0.000000,0.000000)
+  R =  3   G-T Beta Decay    B  =    -0.000709            g_int =    -0.000709             g_ext =  (0.000000,0.000000)
+  R =  3  Fermi Beta Decay   B  =    -0.000600            g_int =    -0.000600             g_ext =  (0.000000,0.000000)
+
+J = 2.0+  E_level =  16.9220 MeV  ITERATIONS =     0
+  R =  1  l =   2  s =  0.0  G  =    74.000000 keV        g_int =     0.086102 MeV^(1/2)   g_ext =  (0.000000,0.000000) MeV^(1/2) 
+  R =  2   G-T Beta Decay    B  =    -0.909361            g_int =    -0.909361             g_ext =  (0.000000,0.000000)
+  R =  2  Fermi Beta Decay   B  =    -0.306840            g_int =    -0.306840             g_ext =  (0.000000,0.000000)
+  R =  3   G-T Beta Decay    B  =    -0.001161            g_int =    -0.001161             g_ext =  (0.000000,0.000000)
+  R =  3  Fermi Beta Decay   B  =    -0.000231            g_int =    -0.000231             g_ext =  (0.000000,0.000000)
+
+J = 2.0+  E_level =  37.0000 MeV  ITERATIONS =     0
+  R =  1  l =   2  s =  0.0  G  = 77135.285005 keV        g_int =    -2.207648 MeV^(1/2)   g_ext =  (0.000000,0.000000) MeV^(1/2) 
+  R =  2   G-T Beta Decay    B  =    -0.018793            g_int =    -0.018793             g_ext =  (0.000000,0.000000)
+  R =  2  Fermi Beta Decay   B  =     0.003151            g_int =     0.003151             g_ext =  (0.000000,0.000000)
+  R =  3   G-T Beta Decay    B  =    -0.001589            g_int =    -0.001589             g_ext =  (0.000000,0.000000)
+  R =  3  Fermi Beta Decay   B  =     0.002718            g_int =     0.002718             g_ext =  (0.000000,0.000000)
+

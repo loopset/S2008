@@ -369,21 +369,21 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
             continue;
         lightIn++;
 
-        // Heavy particle
-        // Only for front reactions, since we have verified that for l0 doesnt apply
-        auto [heavyIndex0, heavyPoint0] {specs->FindSPInLayer("f0", vertex, heavyWorldFrame)};
-        if(heavyIndex0 != -1)
-        {
-            // This means we would measure multiplicity two in the layer -> skip event
-            // We do not consider ELosses in gas bc heavy particle has always a large energy
-            // that wont stop it on the gas
-            // std::cout << "=========================" << '\n';
-            // std::cout << "Vertex : " << vertex << '\n';
-            // std::cout << "SP : " << heavyPoint0 << '\n';
-            // std::cout << "Heavy reached layer theta: " << theta4Lab * TMath::RadToDeg() << '\n';
-            heavyIn++;
-            continue;
-        }
+        // Heavy particle: NOT NEEDED BC HEAVY PARTICLES STOP BF SILICONS
+        // // Only for front reactions, since we have verified that for l0 doesnt apply
+        // auto [heavyIndex0, heavyPoint0] {specs->FindSPInLayer("f0", vertex, heavyWorldFrame)};
+        // if(heavyIndex0 != -1)
+        // {
+        //     // This means we would measure multiplicity two in the layer -> skip event
+        //     // We do not consider ELosses in gas bc heavy particle has always a large energy
+        //     // that wont stop it on the gas
+        //     // std::cout << "=========================" << '\n';
+        //     // std::cout << "Vertex : " << vertex << '\n';
+        //     // std::cout << "SP : " << heavyPoint0 << '\n';
+        //     // std::cout << "Heavy reached layer theta: " << theta4Lab * TMath::RadToDeg() << '\n';
+        //     heavyIn++;
+        //     continue;
+        // }
 
         // Apply SilMatrix cut
         if(firstLayer.Contains("f"))
