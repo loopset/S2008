@@ -222,6 +222,9 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
     auto hEffAfter {HistConfig::Eff2D.GetHistogram()};
     hEffAfter->SetTitle("After cuts");
 
+    // ECM resoltion
+    auto hECMRes {HistConfig::ECMECM.GetHistogram()};
+
     // Load SRIM tables
     // The name of the file sets particle + medium
     auto* srim {new ActPhysics::SRIM()};
@@ -487,6 +490,10 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
             auto T3Recon {srim->EvalInitialEnergy("light", EBefSil0, distance0)};
             auto ExAfter {kin->ReconstructExcitationEnergy(T3Recon, theta3Lab)};
             auto thetaCM {kin->ReconstructTheta3CMFromLab(T3Recon, theta3Lab)};
+            // Eval ECM
+            auto T1Rec {kin->ReconstructBeamEnergyFromLabKinematics(T3Recon, theta3Lab)};
+            auto ECMRec {T1Rec * (p2.GetMass()) / (p1.GetMass() + p2.GetMass())};
+            hECMRes->Fill(ECM, ECMRec);
 
             // fill histograms
             hDistF0->Fill(distance0);
@@ -567,6 +574,7 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
         hSP->Write("hSP");
         hRP->Write("hRP");
         hEff2D->Write("hEff2D");
+        hECMRes->Write("hECMRes");
         outFile->Close();
         delete outFile;
         outFile = nullptr;
@@ -629,7 +637,8 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
         c2->cd(3);
         hEff2D->DrawClone(opt);
         c2->cd(4);
-        hRPxEBeam->DrawClone("colz");
+        // hRPxEBeam->DrawClone("colz");
+        hECMRes->DrawClone("colz");
     }
 
     // deleting news

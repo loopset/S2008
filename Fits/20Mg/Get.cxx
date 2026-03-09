@@ -41,6 +41,7 @@ public:
     void Project(int cThresch = 50);
     void DrawProjectionsThetaCM(const std::function<void(TH1* h)>& apply = nullptr);
     void DrawProjectionsECM(const std::function<void(TH1* h)>& apply = nullptr);
+    TH1D* GetProjectionECM(double thetamin, double thetamax);
 
 private:
     void ApplyEff();
@@ -250,6 +251,17 @@ void DoubleXS::DrawProjectionsECM(const std::function<void(TH1*)>& apply)
     }
 }
 
+TH1D* DoubleXS::GetProjectionECM(double thetamin, double thetamax)
+{
+    auto bmin {fHist->GetXaxis()->FindBin(thetamin)};
+    auto min {fHist->GetXaxis()->GetBinCenter(bmin)};
+    auto bmax {fHist->GetXaxis()->FindBin(thetamax) - 1};
+    auto max {fHist->GetXaxis()->GetBinCenter(bmax)};
+    auto* p {fHist->ProfileY("pInRange", bmin, bmax)};
+    p->SetTitle(TString::Format("#theta_{CM} #in [%.2f,%.2f)", min, max));
+    return p;
+}
+
 
 void Get()
 {
@@ -265,7 +277,7 @@ void Get()
     file->Close();
 
 
-    auto h2d {df.Histo2D({"h20Mg", "20Mg;#theta_{CM} [#circ];E_{CM} [MeV]", 180, 0, 180, 50, 0, 5}, "Rec_ThetaCM",
+    auto h2d {df.Histo2D({"h20Mg", "20Mg;#theta_{CM} [#circ];E_{CM} [MeV]", 36, 0, 180, 50, 0, 5}, "Rec_ThetaCM",
                          "Rec_ECM")};
     h2d->SetTitle("Counts");
 
@@ -293,6 +305,15 @@ void Get()
         });
     xs.DrawProjectionsECM([](TH1* p) { p->SetLineColor(46); });
 
+    // // Get projection
+    // auto thetaCMmin {140};
+    // auto thetaCMmax {145};
+    // auto* p {xs.GetProjectionECM(thetaCMmin, thetaCMmax)};
+    //
+    // auto* c0 {new TCanvas {"c0", "Get canvas"}};
+    // c0->DivideSquare(4);
+    // c0->cd(1);
+    // p->Draw("histe");
 
     auto outfile {std::make_unique<TFile>("./Outputs/20Mg_preliminary.root", "recreate")};
     for(auto* c : *(gROOT->GetListOfCanvases()))

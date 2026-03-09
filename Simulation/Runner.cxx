@@ -2,11 +2,11 @@
 #include "TString.h"
 #include "TSystem.h"
 
-#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
 
+#include "./Plotter.cxx"
 #include "./Simulation_S2008.cxx"
 // what
 // if simu = runs simulation
@@ -86,6 +86,6 @@ void Runner(TString what = "plot", bool standalone = true)
     }
     if(what.Contains("plot"))
     {
-        // Plotter(Eexs, beam, target, light, T1, neutronPS, protonPS);
+        Plotter(beam, target, light, Eexs.front(), T1, neutronPS, protonPS);
     }
 }

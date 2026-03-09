@@ -74,6 +74,9 @@ const TH1DModel EBeam {"hEBeam", "Beam energy;E_{Beam} [MeV]", 180, 0, 90};
 const TH2DModel EBeamRPx {"hEBeamRPx", "Beam energy;RP.X [mm];E_{Beam} [MeV]", 400, 0, 270, 180, 0, 90};
 
 const TH2DModel Eff2D {"hEff2D", "2D efficiency;#theta_{CM} [#circ];E_{CM} [MeV]", 720, 0, 180, 320, 0, 8};
+
+
+const TH2DModel ECMECM {"hECMRes", "E_{CM} resolution;#E_{CM}^{nom} [MeV];E_{CM} [MeV]", 500, 0, 5, 500, 0, 5};
 template <typename T>
 T ChangeTitle(T model, const TString& title, const TString& label = "");
 } // namespace HistConfig
