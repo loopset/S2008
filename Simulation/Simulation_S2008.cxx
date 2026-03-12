@@ -108,7 +108,7 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
     const double zVertexSigma {2.84}; // mm
 
     // number of iterations
-    const int iterations {static_cast<int>(standalone ? 1e7 : 3e7)};
+    const int iterations {static_cast<int>(standalone ? 1e6 : 3e7)};
 
     // Which parameters will be activated
     bool stragglingInGas {true};
@@ -222,8 +222,16 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
     auto hEffAfter {HistConfig::Eff2D.GetHistogram()};
     hEffAfter->SetTitle("After cuts");
 
+    auto hEffDirAll {HistConfig::Eff2D.GetHistogram()};
+    auto hEffDirAfter {HistConfig::Eff2D.GetHistogram()};
+    hEffDirAfter->SetTitle("After cuts;#theta_{3, Lab}^{dir} [#circ];T_{1}^{Dir} [MeV]");
+
     // ECM resoltion
     auto hECMRes {HistConfig::ECMECM.GetHistogram()};
+
+    // T1Dir resolution
+    auto hT1DirRes {HistConfig::ECMECM.GetHistogram()};
+    hT1DirRes->SetTitle("T_{1} direct res;T_{1} sampled [MeV];T_{1} rec [MeV]");
 
     // Load SRIM tables
     // The name of the file sets particle + medium
@@ -339,6 +347,8 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
         phi4Lab = phiCM;
         // Compute ECM
         double ECM {TBeam * (p2.GetMass()) / (p1.GetMass() + p2.GetMass())};
+        // Beam energy in direct reaction
+        double T1Dir {kin->ComputeEquivalentOtherT1(TBeam)};
 
         // Efficiencies
         double thetaCMEff {kin->ReconstructTheta3CMFromLab(T3Lab, theta3Lab)};
@@ -347,6 +357,9 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
         hThetaLabAll->Fill(theta3LabEff * TMath::RadToDeg());
         hPhiAll->Fill(phi3Lab * TMath::RadToDeg());
         hEffAll->Fill(thetaCMEff * TMath::RadToDeg(), ECM);
+        // Theta3 in direct reaction
+        double theta3LabDir {kin->ComputeOtherInLab(thetaCMEff).first * TMath::RadToDeg()};
+        hEffDirAll->Fill(theta3LabDir, T1Dir);
         hRP->Fill(vertex.X(), vertex.Y());
 
         // 4-> Include thetaLab resolution to compute thetaCM and Ex afterwards
@@ -493,7 +506,9 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
             // Eval ECM
             auto T1Rec {kin->ReconstructBeamEnergyFromLabKinematics(T3Recon, theta3Lab)};
             auto ECMRec {T1Rec * (p2.GetMass()) / (p1.GetMass() + p2.GetMass())};
+            auto T1DirRec {kin->ComputeEquivalentOtherT1(T1Rec)};
             hECMRes->Fill(ECM, ECMRec);
+            hT1DirRes->Fill(T1Dir, T1DirRec);
 
             // fill histograms
             hDistF0->Fill(distance0);
@@ -524,6 +539,7 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
             hThetaLab->Fill(theta3LabEff * TMath::RadToDeg());
             hPhiLab->Fill(phi3Lab * TMath::RadToDeg());
             hEffAfter->Fill(thetaCMEff * TMath::RadToDeg(), ECM);
+            hEffDirAfter->Fill(theta3LabDir, T1Dir);
 
             // Save lorentz vectors
             lor_tree.clear();
@@ -562,6 +578,8 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
     // Manual computation of efficiencies
     auto* hEff2D {(TH2D*)hEffAfter->Clone("hEff2D")};
     hEff2D->Divide(hEffAll.get());
+    auto* hEffDir2D {(TH2D*)hEffDirAfter->Clone("hEffDir2D")};
+    hEffDir2D->Divide(hEffDirAll.get());
 
     // SAVING
     if(!standalone)
@@ -574,7 +592,9 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
         hSP->Write("hSP");
         hRP->Write("hRP");
         hEff2D->Write("hEff2D");
+        hEffDir2D->Write("hEffDir2D");
         hECMRes->Write("hECMRes");
+        hT1DirRes->Write("hT1DirRes");
         outFile->Close();
         delete outFile;
         outFile = nullptr;
@@ -631,14 +651,13 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
         c2->DivideSquare(4);
         TString opt {"colz"};
         c2->cd(1);
-        hEffAll->DrawClone(opt);
-        c2->cd(2);
-        hEffAfter->DrawClone(opt);
-        c2->cd(3);
         hEff2D->DrawClone(opt);
-        c2->cd(4);
-        // hRPxEBeam->DrawClone("colz");
+        c2->cd(2);
+        hEffDir2D->DrawClone(opt);
+        c2->cd(3);
         hECMRes->DrawClone("colz");
+        c2->cd(4);
+        hT1DirRes->DrawClone("colz");
     }
 
     // deleting news

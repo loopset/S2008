@@ -180,7 +180,22 @@ void Pipe2_Ex(const std::string& beam, const std::string& target, const std::str
                                                                           (d.fThetaLight) * TMath::DegToRad()) *
                                    TMath::RadToDeg();
                         },
-                        {"MergerData", "EVertex", "Rec_EBeam"});
+                        {"MergerData", "EVertex", "Rec_EBeam"})
+            .DefineSlot("Rec_ThetaLabDir",
+                        [&](unsigned int slot, double rec_ebeam, double rec_thetacm)
+                        {
+                            vkins[slot].SetBeamEnergy(rec_ebeam);
+                            return vkins[slot].ComputeOtherInLab(rec_thetacm * TMath::DegToRad()).first *
+                                   TMath::RadToDeg();
+                        },
+                        {"Rec_EBeam", "Rec_ThetaCM"})
+            .DefineSlot("Rec_EBeamDir",
+                        [&](unsigned int slot, double rec_ebeam)
+                        {
+                            vkins[slot].SetBeamEnergy(rec_ebeam);
+                            return vkins[slot].ComputeEquivalentOtherT1(rec_ebeam);
+                        },
+                        {"Rec_EBeam"});
 
     // Define range of heavy particle
     def = def.Define("RangeHeavy", [&](ActRoot::MergerData& d) { return d.fRP.X() + d.fHeavy.fTL; }, {"MergerData"});

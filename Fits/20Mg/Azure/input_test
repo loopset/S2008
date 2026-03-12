@@ -39,7 +39,7 @@ screen                                                                          
 1              1              1              0.05           10             0.05           145            175            5              1
 </segmentsTest>
 <targetInt>
-0              "1"            100            1              0.1            0              0               "" 0               0              0 
+1              "1"            100            1              0.03           0              0               "" 0               0              0 
 </targetInt>
 <lastRun>
 8960

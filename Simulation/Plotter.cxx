@@ -22,8 +22,11 @@ void Plotter(const std::string& beam, const std::string& target, const std::stri
     auto hEff {(TH2D*)file->Get<TH2D>("hEff2D")};
     auto hSP {(TH2D*)file->Get<TH2D>("hSP")};
     auto hRes {(TH2D*)file->Get<TH2D>("hECMRes")};
+    // In Direct frame
+    auto hEffDir {(TH2D*)file->Get<TH2D>("hEffDir2D")};
+    auto hResDir {(TH2D*)file->Get<TH2D>("hT1DirRes")};
 
-    auto* c0 {new TCanvas {"c0", "Simulation canvas"}};
+    auto* c0 {new TCanvas {"c0", "CM Simulation canvas"}};
     c0->DivideSquare(4);
     c0->cd(1);
     hKin->DrawClone("colz");
@@ -33,4 +36,11 @@ void Plotter(const std::string& beam, const std::string& target, const std::stri
     hSP->DrawClone("colz");
     c0->cd(4);
     hRes->DrawClone("colz");
+
+    auto* c1 {new TCanvas {"c1", "CM Simulation canvas"}};
+    c1->DivideSquare(4);
+    c1->cd(1);
+    hEffDir->DrawClone("colz");
+    c1->cd(2);
+    hResDir->DrawClone("colz");
 }
