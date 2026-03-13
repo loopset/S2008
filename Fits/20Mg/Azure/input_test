@@ -34,15 +34,16 @@ screen                                                                          
 
 </levels>
 <segmentsData>
+1              1              1              0.05           4.95           140            145            1              1              0              0              /media/Data/S2008/Fits/20Mg/Azure/Inputs/lab_1425.dat
 </segmentsData>
 <segmentsTest>
 1              1              1              0.05           10             0.05           145            175            5              1
 </segmentsTest>
 <targetInt>
-1              "1"            100            1              0.03           0              0               "" 0               0              0 
+1              "1"            50             1              0.03           0              0               "" 0               0              0 
 </targetInt>
 <lastRun>
-8960
+8972
 ""
 ""
 0 0

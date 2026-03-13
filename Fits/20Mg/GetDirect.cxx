@@ -4,18 +4,15 @@
 #include "ROOT/RDF/RInterface.hxx"
 #include "ROOT/RDataFrame.hxx"
 
-#include "TCanvas.h"
 #include "TF1.h"
 #include "TFile.h"
-#include "TMathBase.h"
-#include "TProfile.h"
-#include "TProfile2D.h"
 #include "TROOT.h"
-#include "TString.h"
 
 #include <functional>
 #include <memory>
-#include <vector>
+
+#include "../Classes/DoubleXS.cxx"
+#include "../Classes/DoubleXS.h"
 
 void GetDirect()
 {
@@ -31,16 +28,13 @@ void GetDirect()
     file->Close();
 
 
-    auto h2d {df.Histo2D({"h20Mg", "20Mg;#theta_{Lab,3}^{Dir} [#circ];T_{1}^{Dir} [MeV]", 36, 0, 180, 100, 0, 5}, "Rec_ThetaLabDir",
-                         "Rec_EBeamDir")};
+    auto h2d {df.Histo2D({"h20Mg", "20Mg;#theta_{Lab,3}^{Dir} [#circ];T_{1}^{Dir} [MeV]", 36, 0, 180, 50, 0, 5},
+                         "Rec_ThetaLabDir", "Rec_EBeamDir")};
     h2d->SetTitle("Counts");
 
     // Read srim
     auto srim {new ActPhysics::SRIM};
-    srim->ReadTable("beam", "../../Calibrations/SRIM/20Mg_800mbar_95-5.txt");
-
-    // Kinematics
-    auto kin {new ActPhysics::Kinematics {"20Mg(p,p)@84"}};
+    srim->ReadTable("light", "../../Calibrations/SRIM/1H_800mbar_95-5.txt");
 
     // Number of beams
     double Nbeams {201311 * 300}; // counter with GATCONF * div factor
@@ -48,5 +42,17 @@ void GetDirect()
     // Density of target
     double rho {4.743e19};
 
-    h2d->DrawClone("colz");
+    DoubleXS xs {h2d.GetPtr(), heff, srim, Nbeams, rho};
+    xs.Draw();
+    xs.Project(40);
+    xs.DrawProjectionsThetaCM(
+        [](TH1* p)
+        {
+            p->SetLineColor(9);
+            p->GetXaxis()->SetRangeUser(100, 180);
+        });
+    xs.DrawProjectionsECM([](TH1* p) { p->SetLineColor(46); });
+
+    // Write one
+    xs.WriteInAzureFormat(6, "./Azure/Inputs/lab_1425.dat");
 }
