@@ -119,38 +119,42 @@ void Pipe1_PID(const std::string& beam, const std::string& target, const std::st
     {
         // Apply PID and save in file
         auto gated {df.Filter(
-            [&](ActRoot::MergerData& m, ActRoot::ModularData& mod, ActRoot::TPCData& tpc)
-            {
-                // L1
-                if(lambdaIsL1(m, mod, tpc))
-                {
-                    if(cuts.GetCut("l1"))
-                        return cuts.IsInside("l1", m.fLight.fRawTL, m.fLight.fQtotal);
-                    else
-                        return false;
-                }
-                // One silicon
-                else if(lambdaOne(m))
-                {
-                    auto layer {m.fLight.GetLayer(0)};
-                    if(cuts.GetCut(layer))
-                    {
-                        // LIGHT particle
-                        auto l {cuts.IsInside(layer, m.fLight.fEs[0], m.fLight.fQave)};
-                        return l;
-                    }
-                    else
-                        return false;
-                }
-                else if(cuts.GetCut("f0-f1") && lambdaTwo(m)) // PID in fo-f1
-                    return cuts.IsInside("f0-f1", m.fLight.fEs[0], m.fLight.fEs[1]);
-                else
-                    return false;
-            },
-            {"MergerData", "ModularData", "TPCData"})};
+                          [&](ActRoot::MergerData& m, ActRoot::ModularData& mod, ActRoot::TPCData& tpc)
+                          {
+                              // L1
+                              if(lambdaIsL1(m, mod, tpc))
+                              {
+                                  if(cuts.GetCut("l1"))
+                                      return cuts.IsInside("l1", m.fLight.fRawTL, m.fLight.fQtotal);
+                                  else
+                                      return false;
+                              }
+                              // One silicon
+                              else if(lambdaOne(m))
+                              {
+                                  auto layer {m.fLight.GetLayer(0)};
+                                  if(cuts.GetCut(layer))
+                                  {
+                                      // LIGHT particle
+                                      auto l {cuts.IsInside(layer, m.fLight.fEs[0], m.fLight.fQave)};
+                                      return l;
+                                  }
+                                  else
+                                      return false;
+                              }
+                              else if(cuts.GetCut("f0-f1") && lambdaTwo(m)) // PID in fo-f1
+                                  return cuts.IsInside("f0-f1", m.fLight.fEs[0], m.fLight.fEs[1]);
+                              else
+                                  return false;
+                          },
+                          {"MergerData", "ModularData", "TPCData"})
+                        .Define("IsRANSAC", [](ActRoot::TPCData& tpc, ActRoot::MergerData& mer)
+                                { return tpc.fClusters[mer.fLightIdx].GetFlag("IsRANSAC"); },
+                                {"TPCData", "MergerData"})};
+        // Save in file
         auto name {TString::Format("./Outputs/tree_pid_%s_%s_%s.root", beam.c_str(), target.c_str(), light.c_str())};
         std::cout << "Saving PID_Tree in file : " << name << '\n';
-        gated.Snapshot("PID_Tree", name.Data(), {"MergerData"});
+        gated.Snapshot("PID_Tree", name.Data(), {"MergerData", "IsRANSAC"});
     }
 
     // Draw

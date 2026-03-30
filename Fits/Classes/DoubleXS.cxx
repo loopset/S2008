@@ -13,14 +13,15 @@
 #include <stdexcept>
 #include <string>
 
-DoubleXS::DoubleXS(TH2* hData, TH2* hEff, ActPhysics::SRIM* srim, double nb, double rho, ActPhysics::Kinematics* kin)
+DoubleXS::DoubleXS(TH2* hData, TH2* hEff, ActPhysics::SRIM* srim, double nb, double rho, ActPhysics::Kinematics* kin,
+                   TString isCM)
     : fHist((TH2*)hData->Clone("fHist")),
       fEff(hEff),
       fsrim(srim),
       fNbeams(nb),
       fDensity(rho),
       fKin(kin),
-      fIsCM(kin != nullptr ? "CM" : "Lab")
+      fIsCM(isCM)
 {
     fOriginal = (TH2*)hData->Clone("hOriginal");
     fHist->SetTitle("Cross section");
@@ -78,7 +79,6 @@ void DoubleXS::ApplySolidAngle()
 
 double DoubleXS::TransformCMtoLab(double ecm)
 {
-    // Passed kinematics should be in INVERSE
     auto m1 {fKin->GetParticle(1).GetMass()};
     auto m2 {fKin->GetParticle(2).GetMass()};
     return (m1 + m2) / m2 * ecm;
@@ -99,15 +99,24 @@ void DoubleXS::ApplyThickness()
         return;
     for(int y = 1; y <= fThick->GetNbinsY(); y++)
     {
+        // This is in direct kinematics
         auto elow {fThick->GetYaxis()->GetBinLowEdge(y)};
         auto eup {fThick->GetYaxis()->GetBinUpEdge(y)};
+        // Get equivalent 20Mg energy as beam
+        if(!fKin)
+            throw std::runtime_error("Cannot transform p energy to RIB");
+        elow = fKin->ComputeEquivalentOtherT1(elow);
+        eup = fKin->ComputeEquivalentOtherT1(eup);
         // Convert to lab if in CM
         if(fIsCM == "CM")
         {
             elow = TransformCMtoLab(elow);
             eup = TransformCMtoLab(eup);
         }
-        auto key {fIsCM == "CM" ? "beam" : "light"};
+        auto key {"beam"};
+        if(!fsrim || !fsrim->CheckKeyIsStored(key))
+            throw std::runtime_error("Cannot access SRIM pointer");
+
         auto rlow {fsrim->EvalRange(key, elow)};
         auto rup {fsrim->EvalRange(key, eup)};
         // And DeltaX
@@ -258,6 +267,9 @@ void DoubleXS::WriteInAzureFormat(int idx, const TString& file)
         if(y <= 0)
             continue;
         auto uy {p->GetBinError(b)};
+        // Workaround for azure...
+        if(y - uy <= 0)
+            uy = y - 0.01;
         streamer << x << "    " << centre << "    " << y << "    " << uy << '\n';
     }
     streamer.close();

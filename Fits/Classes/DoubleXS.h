@@ -36,7 +36,7 @@ private:
 
 public:
     DoubleXS(TH2* hData, TH2* hEff, ActPhysics::SRIM* srim, double nb, double rho,
-             ActPhysics::Kinematics* kin = nullptr);
+             ActPhysics::Kinematics* kin, TString isCM = "Lab");
 
     void Draw();
 
@@ -45,6 +45,7 @@ public:
     void DrawProjectionsECM(const std::function<void(TH1* h)>& apply = nullptr);
     TH1D* GetProjectionECM(double thetamin, double thetamax);
     void WriteInAzureFormat(int idx, const TString& file);
+    TH2* GetHist() { return fHist; }
 
 private:
     void ApplyEff();

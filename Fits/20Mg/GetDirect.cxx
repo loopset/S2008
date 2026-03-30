@@ -34,7 +34,7 @@ void GetDirect()
 
     // Read srim
     auto srim {new ActPhysics::SRIM};
-    srim->ReadTable("light", "../../Calibrations/SRIM/1H_800mbar_95-5.txt");
+    srim->ReadTable("beam", "../../Calibrations/SRIM/20Mg_800mbar_95-5.txt");
 
     // Number of beams
     double Nbeams {201311 * 300}; // counter with GATCONF * div factor
@@ -42,8 +42,18 @@ void GetDirect()
     // Density of target
     double rho {4.743e19};
 
-    DoubleXS xs {h2d.GetPtr(), heff, srim, Nbeams, rho};
+    // Inverse kinematics
+    ActPhysics::Kinematics inverse {"20Mg(p,p)@84.85"};
+    // Direct kinematics
+    auto direct {inverse.GetOtherKinematics()};
+
+
+    DoubleXS xs {h2d.GetPtr(), heff, srim, Nbeams, rho, direct.get()};
     xs.Draw();
+
+    // // Write
+    // xs.GetHist()->SaveAs("./Outputs/preliminary_xs.root");
+
     xs.Project(40);
     xs.DrawProjectionsThetaCM(
         [](TH1* p)
@@ -55,4 +65,5 @@ void GetDirect()
 
     // Write one
     xs.WriteInAzureFormat(6, "./Azure/Inputs/lab_1425.dat");
+    xs.WriteInAzureFormat(7, "./Azure/Inputs/lab_1475.dat");
 }

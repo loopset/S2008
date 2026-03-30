@@ -46,7 +46,7 @@ void ActAlgorithm::RecRANSAC::Run()
     //     return;
 
     const auto& noise {fTPCData->fRaw};
-    int iter {175};
+    int iter {250};
     int minVoxels {7};
     double distThresh {2.};
     ActAlgorithm::RANSAC ransac {iter, minVoxels, distThresh};
