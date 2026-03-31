@@ -97,8 +97,6 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
     if(!standalone)
         gROOT->SetBatch(true);
 
-    bool preliminary {true};
-
     // Resolutions
     const double sigmaSil {0.060 / 2.355};
     const double sigmaPercentBeam {0};
@@ -142,49 +140,42 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
     // Silicon specs
     auto* specs {new ActPhysics::SilSpecs};
     specs->ReadFile("/media/Data/S2008/configs/silspecs.conf");
-    // Silicon EFFECTIVE matrix
-    ActPhysics::SilMatrix* sm {};
-    // Set reference position and offset along Z!
-    double silCentre {};
-    double beamOffset {}; // determined from emittance calculations
-    // Set layers
-    TString firstLayer {};
-    TString secondLayer {};
-    if(preliminary)
-    {
-        sm = S2008::GetFrontMatrix();
-        silCentre = sm->GetMeanZ({4, 7});
-        specs->GetLayer("f0").ReplaceWithMatrix(sm);
-        beamOffset = -5.40; // mm
-        specs->EraseLayer("l0");
-        specs->EraseLayer("r0");
-        firstLayer = "f0";
-        secondLayer = "f1";
-    }
-    else
-    {
-        throw std::runtime_error("Preliminary: only simulating f0");
-    }
+    // Front silicons
+    auto* f0sm {S2008::GetFrontMatrix()};
+    auto silCentre = f0sm->GetMeanZ({4, 7});
+    specs->GetLayer("f0").ReplaceWithMatrix(f0sm);
+    auto beamOffset = -5.40; // mm
     double zVertexMean {silCentre + beamOffset};
+    TString secondLayer {"f1"};
+    // Left silicons
+    auto* l0sm {S2008::GetLeftMatrix()};
+    l0sm->MoveZTo(zVertexMean - 2.67, {4});
+    specs->GetLayer("l0").ReplaceWithMatrix(l0sm);
+    // Right silicons
+    auto* r0sm {S2008::GetRightMatrix()};
+    r0sm->MoveZTo(zVertexMean - 1.51, {4});
+    specs->GetLayer("r0").ReplaceWithMatrix(r0sm);
 
-    // CUTS ON SILICON ENERGY, depending on particle
-    // from the graphical PID cut
-    ActRoot::CutsManager<std::string> cuts;
-    cuts.ReadCut(
-        light,
-        TString::Format("/media/Data/S2008/PostAnalysis/Cuts/pid_%s_f0_%s.root", light.c_str(), beam.c_str()).Data());
-    std::pair<double, double> eLoss0Cut;
-    if(cuts.GetCut(light))
+    // CUTS ON SILICON ENERGY, depending on particle and layer
+    std::map<std::string, std::pair<double, double>> eLoss0Cuts {};
+    for(const auto& layer : {"f0", "l0", "r0"})
     {
-        eLoss0Cut = cuts.GetXRange(light);
-        std::cout << BOLDGREEN << "-> ESil range for " << light << ": [" << eLoss0Cut.first << ", " << eLoss0Cut.second
-                  << "] MeV" << RESET << '\n';
-    }
-    else
-    {
-        std::cout << BOLDRED << "Simulation_S2008(): could not read PID cut for " << light
-                  << " -> using default eLoss0Cut" << RESET << '\n';
-        eLoss0Cut = {0, 1000};
+        ActRoot::CutsManager<std::string> cut;
+        cut.ReadCut(light, TString::Format("/media/Data/S2008/PostAnalysis/Cuts/pid_%s_%s_%s.root", light.c_str(),
+                                           layer, beam.c_str())
+                               .Data());
+        if(cut.GetCut(light))
+        {
+            eLoss0Cuts[layer] = cut.GetXRange(light);
+            std::cout << BOLDGREEN << "-> ESil in " << layer << " : " << light << ": [" << eLoss0Cuts[layer].first
+                      << ", " << eLoss0Cuts[layer].second << "] MeV" << RESET << '\n';
+        }
+        else
+        {
+            std::cout << BOLDRED << "Simulation_S2008(): could not read PID cut for " << light
+                      << " -> using default eLoss0Cut" << RESET << '\n';
+            eLoss0Cuts[layer] = {0, 1000};
+        }
     }
 
     // Histograms
@@ -198,10 +189,17 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
     auto hDistF0 {HistConfig::ChangeTitle(HistConfig::TL, "Distance to F0").GetHistogram()};
     auto hKinVertex {HistConfig::ChangeTitle(HistConfig::KinSimu, "Kinematics at vertex").GetHistogram()};
     auto hKinSampled {HistConfig::ChangeTitle(HistConfig::KinSimu, "Sampled kinematics").GetHistogram()};
-    auto hSP {HistConfig::SP.GetHistogram()};
+    std::map<std::string, std::shared_ptr<TH2D>> hsSP, hsSPTheta;
+    for(const auto& layer : {"f0", "l0", "r0"})
+    {
+        hsSP[layer] = HistConfig::SP.GetHistogram();
+        hsSP[layer]->SetNameTitle(TString::Format("hSP%s", layer), layer);
+
+        hsSPTheta[layer] = std::make_unique<TProfile2D>(
+            "hSPTheta", "SP vs #theta_{CM};Y [mm];Z [mm];#theta_{CM} [#circ]", 75, 0, 300, 75, 0, 300);
+        hsSPTheta[layer]->SetTitle(layer);
+    }
     auto hEexAfter {HistConfig::ChangeTitle(HistConfig::Ex, "Ex after resolutions").GetHistogram()};
-    auto hSPTheta {std::make_unique<TProfile2D>("hSPTheta", "SP vs #theta_{CM};Y [mm];Z [mm];#theta_{CM} [#circ]", 75,
-                                                0, 300, 75, 0, 300)};
     auto hRP {HistConfig::RP.GetHistogram()};
     auto hRPz {std::make_unique<TH2D>("hRPz", "RP;Y [mm];Z [mm]", 550, 0, 256, 550, 0, 256)};
     // Debug histograms
@@ -220,11 +218,11 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
     // 3D efficiency
     auto hEffAll {HistConfig::Eff2D.GetHistogram()};
     auto hEffAfter {HistConfig::Eff2D.GetHistogram()};
-    hEffAfter->SetTitle("After cuts");
+    hEffAfter->SetTitle("Efficiency");
 
     auto hEffDirAll {HistConfig::Eff2D.GetHistogram()};
     auto hEffDirAfter {HistConfig::Eff2D.GetHistogram()};
-    hEffDirAfter->SetTitle("After cuts;#theta_{3, Lab}^{dir} [#circ];T_{1}^{Dir} [MeV]");
+    hEffDirAfter->SetTitle("Efficiency;#theta_{3, Lab}^{dir} [#circ];T_{1}^{Dir} [MeV]");
 
     // ECM resoltion
     auto hECMRes {HistConfig::ECMECM.GetHistogram()};
@@ -377,11 +375,27 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
         // Rotate to world = geometry frame
         auto dirWorldFrame {runner.RotateToWorldFrame(dirBeamFrame, beamDir)};
         auto heavyWorldFrame {runner.RotateToWorldFrame(heavyBeamFrame, beamDir)};
-        // Light particle
-        auto [silIndex0, silPoint0InMM] {specs->FindSPInLayer(firstLayer.Data(), vertex, dirWorldFrame)};
 
-        // skip tracks that doesn't reach silicons or are not in SiliconMatrix indexes
-        if(silIndex0 == -1 || !(sm->IsInMatrix(silIndex0)))
+        // Light particle
+        int silIndex0 {-1};
+        std::string firstLayer {};
+        XYZPoint silPoint0InMM {};
+        std::shared_ptr<ActPhysics::SilMatrix> sm {};
+        for(const auto& layer : {"f0", "l0", "r0"})
+        {
+            auto [index, sp] = specs->FindSPInLayer(layer, vertex, dirWorldFrame);
+            if(index != -1)
+            {
+                silIndex0 = index;
+                firstLayer = layer;
+                silPoint0InMM = sp;
+                sm = specs->GetLayer(layer).GetSilMatrix();
+                break;
+            }
+        }
+
+        // skip tracks that doesn't reach silicons
+        if(silIndex0 == -1)
             continue;
         lightIn++;
 
@@ -402,7 +416,7 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
         // }
 
         // Apply SilMatrix cut
-        if(firstLayer.Contains("f"))
+        if(TString(firstLayer).Contains("f"))
         {
             if(!sm->IsInside(silIndex0, silPoint0InMM.Y(), silPoint0InMM.Z()))
                 continue;
@@ -412,6 +426,7 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
             if(!sm->IsInside(silIndex0, silPoint0InMM.X(), silPoint0InMM.Z()))
                 continue;
         }
+
         // Define SP distance
         auto distance0 {(vertex - silPoint0InMM).R()};
         auto T3EnteringSil {srim->SlowWithStraggling("light", T3Lab, distance0)};
@@ -421,7 +436,7 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
             continue;
 
         // First layer of silicons
-        auto& layer {specs->GetLayer(firstLayer.Data())};
+        auto& layer {specs->GetLayer(firstLayer)};
         // Angle with normal
         auto normal {layer.GetNormal()};
         auto angleNormal0 {AngleWithNormal(dirWorldFrame, normal)};
@@ -497,7 +512,7 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
         //(d,light) is investigated gating on Esil1 = 0!
         // bool cutEAfterSil0 {EBefSil0 != -1 && !isPunch};
         bool cutEAfterSil0 {T3AfterSil0 == 0};
-        bool cutELoss0 {eLoss0Cut.first <= eLoss0 && eLoss0 <= eLoss0Cut.second};
+        bool cutELoss0 {eLoss0Cuts[firstLayer].first <= eLoss0 && eLoss0 <= eLoss0Cuts[firstLayer].second};
         if(cutEAfterSil0 && cutELoss0) // fill histograms
         {
             auto T3Recon {srim->EvalInitialEnergy("light", EBefSil0, distance0)};
@@ -515,17 +530,17 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
             hKinSampled->Fill(theta3LabEff * TMath::RadToDeg(), T3Lab);
             hKinVertex->Fill(theta3Lab * TMath::RadToDeg(), T3Recon);
             hEexAfter->Fill(ExAfter, weight);
-            if(firstLayer.Contains("f"))
+            if(TString(firstLayer).Contains("f"))
             {
-                hSP->Fill(silPoint0InMM.Y(), silPoint0InMM.Z());
-                hSPTheta->Fill(silPoint0InMM.Y(), silPoint0InMM.Z(), thetaCM * TMath::RadToDeg());
+                hsSP[firstLayer]->Fill(silPoint0InMM.Y(), silPoint0InMM.Z());
+                hsSPTheta[firstLayer]->Fill(silPoint0InMM.Y(), silPoint0InMM.Z(), thetaCM * TMath::RadToDeg());
                 hRPz->Fill(vertex.Y(), vertex.Z());
             }
             else
             {
-                hSP->Fill(silPoint0InMM.X(), silPoint0InMM.Z());
-                hSPTheta->Fill(silPoint0InMM.X(), silPoint0InMM.Z(), thetaCM * TMath::RadToDeg());
-                hRPz->Fill(vertex.X(), vertex.Z());
+                hsSP[firstLayer]->Fill(silPoint0InMM.X(), silPoint0InMM.Z());
+                hsSPTheta[firstLayer]->Fill(silPoint0InMM.X(), silPoint0InMM.Z(), thetaCM * TMath::RadToDeg());
+                // hRPz->Fill(vertex.X(), vertex.Z());
             }
             // RP histogram
             hELoss0->Fill(T3EnteringSil, eLoss0);
@@ -589,7 +604,8 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
         eff->Write();
         effLab->Write();
         effPhi->Write();
-        hSP->Write("hSP");
+        for(auto& [_, h] : hsSP)
+            h->Write();
         hRP->Write("hRP");
         hEff2D->Write("hEff2D");
         hEffDir2D->Write("hEffDir2D");
@@ -616,13 +632,13 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
         c0->cd(3);
         // hDistF0->DrawClone();
         hKinSampled->DrawClone("colz");
-        gtheo->Draw("lp");
+        gtheo->Draw("l");
         c0->cd(4);
         // hThetaCMAll->DrawClone();
         hRP->DrawClone("colz");
         c0->cd(5);
         hRPz->DrawClone("colz");
-        sm->DrawClone();
+        f0sm->DrawClone();
         c0->cd(6);
         hELoss0->DrawClone("colz");
         // hThetaLabNormal->DrawClone("colz");
@@ -633,9 +649,9 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
         hKinVertex->DrawClone("colz");
         gtheo->Draw("same");
         c1->cd(2);
-        hSP->DrawClone("col");
-        if(sm)
-            sm->Draw();
+        // hSP->DrawClone("col");
+        hsSP["f0"]->DrawClone("col");
+        f0sm->Draw();
         c1->cd(3);
         hEexAfter->DrawClone("hist");
         c1->cd(4);
@@ -648,7 +664,7 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
         hDeltaE->DrawClone("colz");
 
         auto* c2 {new TCanvas {"c2", "2D Eff canvas"}};
-        c2->DivideSquare(4);
+        c2->DivideSquare(6);
         TString opt {"colz"};
         c2->cd(1);
         hEff2D->DrawClone(opt);
@@ -658,6 +674,12 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
         hECMRes->DrawClone("colz");
         c2->cd(4);
         hT1DirRes->DrawClone("colz");
+        c2->cd(5);
+        hsSP["l0"]->DrawClone("col");
+        l0sm->Draw();
+        c2->cd(6);
+        hsSP["r0"]->DrawClone("col");
+        r0sm->Draw();
     }
 
     // deleting news

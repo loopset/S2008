@@ -13,7 +13,7 @@ const TH2DModel PID {"hPID", "PID;E_{Sil} [MeV];Q_{ave} [mm^{-1}]", 400, 0, 40, 
 
 const TH2DModel PIDTwo {"hPIDTwo", "PID with two silicons;E_{1} [MeV];E_{0} [MeV]", 800, 0, 40, 800, 0, 40};
 
-const TH2DModel SP {"hSP", "SP;X or Y [mm];Z [mm]", 200, -10, 300, 200, -10, 300};
+const TH2DModel SP {"hSP", "SP;X or Y [mm];Z [mm]", 200, -10, 300, 250, -10, 390};
 
 const TH2DModel RP {"hRP", "RP;X [mm];Y [mm]", 200, -10, 300, 200, -10, 300};
 
@@ -76,7 +76,7 @@ const TH2DModel EBeamRPx {"hEBeamRPx", "Beam energy;RP.X [mm];E_{Beam} [MeV]", 4
 const TH2DModel Eff2D {"hEff2D", "2D efficiency;#theta_{CM} [#circ];E_{CM} [MeV]", 720, 0, 180, 320, 0, 8};
 
 
-const TH2DModel ECMECM {"hECMRes", "E_{CM} resolution;#E_{CM}^{nom} [MeV];E_{CM} [MeV]", 500, 0, 5, 500, 0, 5};
+const TH2DModel ECMECM {"hECMRes", "E_{CM} resolution;E_{CM}^{nom} [MeV];E_{CM} [MeV]", 500, 0, 5, 500, 0, 5};
 template <typename T>
 T ChangeTitle(T model, const TString& title, const TString& label = "");
 } // namespace HistConfig

@@ -25,19 +25,17 @@ void OverlapSM(const std::string& beam)
     auto* hyz {file->Get<TH2D>("hTrajYZ")};
     // Mean of beam in histogram
     auto meanFront {hyz->GetMean(2)};
+    auto meanSide {hxz->GetMean(2)};
 
     // Real silicon specs
     ActPhysics::SilSpecs specs;
     specs.ReadFile("../../configs/silspecs.conf");
 
-    // Read SM
-    auto* f0 {S2008::GetFrontMatrix()};
-
     // Map things
-    std::vector<TH2D*> hs {hyz};
-    std::vector<ActPhysics::SilMatrix*> sms {f0};
-    std::vector<std::string> labels {"f0"};
-    std::vector<std::string> layers {"f0"};
+    std::vector<TH2D*> hs {hyz, hxz, hxz};
+    std::vector<ActPhysics::SilMatrix*> sms {S2008::GetFrontMatrix(), S2008::GetLeftMatrix(), S2008::GetRightMatrix()};
+    std::vector<std::string> labels {"f0", "l0", "r0"};
+    std::vector<std::string> layers {"f0", "l0", "r0"};
     std::vector<ActPhysics::SilMatrix*> phys;
     // Format phys sms
     for(int i = 0; i < labels.size(); i++)
@@ -61,7 +59,17 @@ void OverlapSM(const std::string& beam)
         double ref {};
         if(label.Contains("f0"))
         {
-            sils = {4,7};
+            sils = {4, 7};
+            ref = meanFront;
+        }
+        else if(label.Contains("l0"))
+        {
+            sils = {4};
+            ref = meanSide;
+        }
+        else if(label.Contains("r0"))
+        {
+            sils = {4};
             ref = meanFront;
         }
         for(auto sil : sils)

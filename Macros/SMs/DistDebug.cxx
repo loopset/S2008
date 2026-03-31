@@ -13,9 +13,14 @@
 #include <iostream>
 #include <vector>
 
-void DistDebug()
+void DistDebug(TString mode)
 {
-    auto f {new TFile {"./Outputs/sms.root"}};
+    mode.ToLower();
+    bool isSide {mode.Contains("f") ? false : true};
+    std::cout << "isSide ? " << std::boolalpha << isSide << '\n';
+
+    auto f {new TFile {TString::Format("./Outputs/sms_%s.root", mode.Data())}};
+    std::cout << "Opening : " << f->GetName() << '\n';
     auto dists {*f->Get<std::vector<double>>("dists")};
     std::vector<ActPhysics::SilMatrix*> sms;
     for(int i = 0; i < dists.size(); i++)
@@ -24,20 +29,24 @@ void DistDebug()
         if(!sms.back())
             std::cout << "Nullptr" << '\n';
     }
-    std::vector<int> sils {1, 2, 4, 7};
+    std::vector<int> refs {1, 2, 4, 7};
+    if(mode == "l0")
+        refs = {2, 5, 8};
+    if(mode == "r0")
+        refs = {0, 6};
 
     // Get heights per distance
     auto* gm {new TGraphErrors};
-    gm->SetTitle("Mean height;Dist l0 [mm];Height [mm]");
+    gm->SetTitle(TString::Format("Mean height;Dist %s [mm];Height [mm]", mode.Data()));
     auto* gs {new TGraphErrors};
-    gs->SetTitle("Mean deviation;Dist l0 [mm];Deviation [mm]");
+    gs->SetTitle(TString::Format("Mean deviation;Dist %s [mm];Deviation [mm]", mode.Data()));
     int idx {};
     for(auto& sm : sms)
     {
         std::cout << "dist : " << dists[idx] << '\n';
         // Compute std dev
         std::vector<double> heights, devs;
-        for(const auto& sil : sils)
+        for(const auto& sil : refs)
         {
             auto height {sm->GetHeight(sil)};
             heights.push_back(height);

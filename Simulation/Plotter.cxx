@@ -20,22 +20,28 @@ void Plotter(const std::string& beam, const std::string& target, const std::stri
     // Open file
     auto* file {new TFile {filename}};
     auto hEff {(TH2D*)file->Get<TH2D>("hEff2D")};
-    auto hSP {(TH2D*)file->Get<TH2D>("hSP")};
+    auto hSPf0 {(TH2D*)file->Get<TH2D>("hSPf0")};
+    auto hSPl0 {(TH2D*)file->Get<TH2D>("hSPl0")};
+    auto hSPr0 {(TH2D*)file->Get<TH2D>("hSPr0")};
     auto hRes {(TH2D*)file->Get<TH2D>("hECMRes")};
     // In Direct frame
     auto hEffDir {(TH2D*)file->Get<TH2D>("hEffDir2D")};
     auto hResDir {(TH2D*)file->Get<TH2D>("hT1DirRes")};
 
     auto* c0 {new TCanvas {"c0", "CM Simulation canvas"}};
-    c0->DivideSquare(4);
+    c0->DivideSquare(6);
     c0->cd(1);
     hKin->DrawClone("colz");
     c0->cd(2);
     hEff->DrawClone("colz");
     c0->cd(3);
-    hSP->DrawClone("colz");
-    c0->cd(4);
     hRes->DrawClone("colz");
+    c0->cd(4);
+    hSPf0->DrawClone("colz");
+    c0->cd(5);
+    hSPl0->DrawClone("colz");
+    c0->cd(6);
+    hSPr0->DrawClone("colz");
 
     auto* c1 {new TCanvas {"c1", "CM Simulation canvas"}};
     c1->DivideSquare(4);

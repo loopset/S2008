@@ -17,7 +17,7 @@
 void GetDirect()
 {
     ROOT::EnableImplicitMT();
-    ROOT::RDataFrame df {"Final_Tree", "../../PostAnalysis/Outputs/tree_ex_20Mg_p_p_front.root"};
+    ROOT::RDataFrame df {"Final_Tree", "../../PostAnalysis/Outputs/tree_ex_20Mg_p_p_sil.root"};
 
 
     // Read efficiency
@@ -64,6 +64,6 @@ void GetDirect()
     xs.DrawProjectionsECM([](TH1* p) { p->SetLineColor(46); });
 
     // Write one
-    xs.WriteInAzureFormat(6, "./Azure/Inputs/lab_1425.dat");
-    xs.WriteInAzureFormat(7, "./Azure/Inputs/lab_1475.dat");
+    // xs.WriteInAzureFormat(6, "./Azure/Inputs/lab_1425.dat");
+    // xs.WriteInAzureFormat(7, "./Azure/Inputs/lab_1475.dat");
 }

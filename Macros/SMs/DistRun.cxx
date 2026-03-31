@@ -13,6 +13,7 @@
 
 #include "Math/Point3Dfwd.h"
 
+#include <iostream>
 #include <memory>
 #include <tuple>
 #include <utility>
@@ -20,8 +21,12 @@
 
 #include "../../PostAnalysis/Gates.cxx"
 
-void DistRun()
+void DistRun(TString mode)
 {
+    mode.ToLower();
+    bool isSide {mode.Contains("f") ? false : true};
+    std::cout << "isSide ? " << std::boolalpha << isSide << '\n';
+
     ROOT::EnableImplicitMT();
 
     ActRoot::DataManager data {"../../configs/data_all.conf", ActRoot::ModeType::EMerge};
@@ -30,20 +35,45 @@ void DistRun()
     ROOT::RDataFrame df {*chain};
 
     // Filter side events
-    auto gated {df.Filter(S2008::isFront, {"MergerData"})};
+    auto gated {df.Filter(
+        [mode](ActRoot::MergerData& m)
+        {
+            if(mode.Contains("l"))
+                return S2008::isLeft(m);
+            if(mode.Contains("r"))
+                return S2008::isRight(m);
+            if(mode.Contains("f"))
+                return S2008::isFront(m);
+            return false;
+        },
+        {"MergerData"})};
 
     // Define distances in mm
     double base {256.};
     std::vector<double> dists;
-    for(double d = 95; d < 110; d += 1.5)
-        dists.push_back(base + d);
+    if(!isSide)
+    {
+        for(double d = 95; d < 110; d += 1.5)
+            dists.push_back(base + d);
+    }
+    else if(mode == "l0")
+    {
+        for(double d = 70; d < 85; d += 1.5)
+            dists.push_back(base + d);
+    }
+    else if(mode == "r0")
+    {
+        for(double d = 75; d < 90; d += 1.5)
+            dists.push_back(0 - d);
+    }
 
-    int xbins {200};
-    std::pair<double, double> xlims {-20, 300};
-    int zbins {200};
-    std::pair<double, double> zlims {-20, 300};
+    int xbins {280};
+    std::pair<double, double> xlims {-20, 400};
+    int zbins {280};
+    std::pair<double, double> zlims {-20, 400};
     // Save
-    auto f {std::make_unique<TFile>("./Outputs/histos.root", "recreate")};
+    auto f {std::make_unique<TFile>(TString::Format("./Outputs/histos_%s.root", mode.Data()), "recreate")};
+    std::cout << "Saving in : " << f->GetName() << '\n';
     f->WriteObject(&dists, "dists");
     TStopwatch timer {};
     timer.Start();
@@ -58,7 +88,7 @@ void DistRun()
                                     auto p {d.fBP};
                                     auto dir {(d.fSP - d.fBP)};
                                     ActRoot::Line line {p, dir, 0};
-                                    return line.MoveToX(dist);
+                                    return isSide ? line.MoveToY(dist) : line.MoveToX(dist);
                                 },
                                 {"MergerData"})};
         // Fill histograms!
@@ -77,7 +107,7 @@ void DistRun()
         {
             pxs.emplace(std::piecewise_construct, std::forward_as_tuple(idx),
                         std::forward_as_tuple(ROOT::TNumSlots {node.GetNSlots()}, TString::Format("px%d", idx),
-                                              TString::Format("%.2f mm X proj %d;Y [mm]", dist, idx), xbins,
+                                              TString::Format("%.2f mm X proj %d;X or Y [mm]", dist, idx), xbins,
                                               xlims.first, xlims.second));
             pzs.emplace(std::piecewise_construct, std::forward_as_tuple(idx),
                         std::forward_as_tuple(ROOT::TNumSlots {node.GetNSlots()}, TString::Format("pz%d", idx),
@@ -87,11 +117,11 @@ void DistRun()
         node.ForeachSlot(
             [&](unsigned int slot, ActRoot::MergerData& data, ROOT::Math::XYZPointF& sp)
             {
-                hSP.GetAtSlot(slot)->Fill(sp.Y(), sp.Z());
+                hSP.GetAtSlot(slot)->Fill(isSide ? sp.X() : sp.Y(), sp.Z());
                 auto idx {data.fSilNs.front()};
                 if(pxs.count(idx))
                 {
-                    pxs[idx].GetAtSlot(slot)->Fill(sp.Y());
+                    pxs[idx].GetAtSlot(slot)->Fill(isSide ? sp.X() : sp.Y());
                     pzs[idx].GetAtSlot(slot)->Fill(sp.Z());
                 }
             },
@@ -104,10 +134,17 @@ void DistRun()
         dir->cd();
         hSP.Merge()->Write();
         for(auto m : {&pxs, &pzs})
+        {
             for(auto& [_, h] : *m)
-                h.Merge()->Write();
-        f->cd();
+            {
+                auto merged {h.Merge()};
+                if(merged)
+                    merged->Write();
+            }
+        }
     }
+
+
     timer.Stop();
     timer.Print();
 }

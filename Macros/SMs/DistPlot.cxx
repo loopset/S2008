@@ -31,9 +31,20 @@ std::pair<double, double> Do(TH1D*& p)
     return points;
 }
 
-void DistPlot()
+void DistPlot(TString mode)
 {
-    auto f {std::make_unique<TFile>("./Outputs/histos.root")};
+    mode.ToLower();
+    bool isSide {mode.Contains("f") ? false : true};
+    std::cout << "isSide ? " << std::boolalpha << isSide << '\n';
+
+    // Config idxs
+    std::vector<int> idxs {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+    if(mode == "l0")
+        idxs = {1, 2, 4, 5, 7, 8, 10, 11};
+    if(mode == "r0")
+        idxs = {0, 1, 4, 6, 7, 9, 10};
+
+    auto f {std::make_unique<TFile>(TString::Format("./Outputs/histos_%s.root", mode.Data()))};
     auto dists {*f->Get<std::vector<double>>("dists")};
     // auto aux {dists[0]};
     // dists.clear();
@@ -54,17 +65,23 @@ void DistPlot()
         pzs.push_back({});
         sms.push_back(new ActPhysics::SilMatrix);
         sms.back()->SetName(h2d->GetTitle());
-        for(auto& idx : {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})
+        for(auto& idx : idxs)
         {
             auto xkey {TString::Format("px%d", idx)};
             auto zkey {TString::Format("pz%d", idx)};
             pxs.back()[idx] = dir->Get<TH1D>(xkey);
             if(!pxs.back()[idx])
-                throw std::runtime_error("Cannot open " + xkey);
+            {
+                std::cout << "Cannot open " << xkey << '\n';
+                continue;
+            }
             pxs.back()[idx]->SetDirectory(nullptr);
             pzs.back()[idx] = dir->Get<TH1D>(zkey);
             if(!pzs.back()[idx])
-                throw std::runtime_error("Cannot open " + zkey);
+            {
+                std::cout << "Cannot open " << zkey << '\n';
+                continue;
+            }
             pzs.back()[idx]->SetDirectory(nullptr);
             // Fit
             auto x = Do(pxs.back()[idx]);
@@ -103,7 +120,7 @@ void DistPlot()
     }
 
     // Save
-    auto out {std::make_unique<TFile>("./Outputs/sms.root", "recreate")};
+    auto out {std::make_unique<TFile>(TString::Format("./Outputs/sms_%s.root", mode.Data()), "recreate")};
     out->WriteObject(&dists, "dists");
     for(int i = 0; i < sms.size(); i++)
     {

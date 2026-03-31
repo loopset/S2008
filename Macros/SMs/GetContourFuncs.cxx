@@ -71,8 +71,8 @@ void SiliconCountourGetter(TH1* proj, double lamp, double lmin, double lmax, dou
     // Fit
     for(auto& f : {fleft, fright})
     {
-        f->SetParLimits(1, 0, 300);
-        f->SetParLimits(2, 0, 4);
+        f->SetParLimits(1, 0, 500);
+        f->SetParLimits(2, 0, 10);
         proj->Fit(f, "0QR+");
         proj->GetFunction(f->GetName())->ResetBit(TF1::kNotDraw);
     }
@@ -158,6 +158,8 @@ TF1* FindBestFit(TH1D* h, double width, double step, TString func = "expo")
         for(double b = maxguess - width; b <= maxguess + width; b += step)
         {
             auto res {h->Fit(func, "0QSM", "", a, b)};
+            if(res == -1)
+                continue;
             chis.push_back(res.Get()->Chi2());
             ranges.push_back({a, b});
         }

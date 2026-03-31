@@ -20,6 +20,10 @@ void DoFits(TString mode)
     std::vector<int> idxs {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
     bool isSide {mode.Contains("f") ? false : true};
     std::cout << "isSide ? " << std::boolalpha << isSide << '\n';
+    if(mode == "l0")
+        idxs = {1, 2, 4, 5, 7, 8, 10, 11};
+    if(mode == "r0")
+        idxs = {0, 1, 4, 6, 7, 9, 10};
 
     // Read data
     auto fin {std::make_unique<TFile>(TString::Format("./Inputs/%s_histograms.root", mode.Data()).Data())};
@@ -53,6 +57,11 @@ void DoFits(TString mode)
     // Fit to contour
     double thresh {0.85};
     double width {10};
+    if(isSide)
+    {
+        thresh = 0.6;
+        width = 20; // increase for lateral sils
+    }
     // XY
     auto xypoints {FitToCountour(nxys, thresh, width)};
     // Z
