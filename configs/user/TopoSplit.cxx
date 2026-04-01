@@ -2,6 +2,7 @@
 
 #include "ActCluster.h"
 #include "ActColors.h"
+#include "ActContinuity.h"
 #include "ActLine.h"
 #include "ActMultiAction.h"
 #include "ActTPCData.h"
@@ -13,6 +14,7 @@
 #include <algorithm>
 #include <iostream>
 #include <iterator>
+#include <memory>
 #include <vector>
 
 void ActAlgorithm::TopoSplit::ReadConfiguration(std::shared_ptr<ActRoot::InputBlock> block)
@@ -28,6 +30,10 @@ void ActAlgorithm::TopoSplit::ReadConfiguration(std::shared_ptr<ActRoot::InputBl
         fMedianFactor = block->GetDouble("MedianFactor");
     if(block->CheckTokenExists("StdDevThresh", true))
         fStdDevThresh = block->GetDouble("StdDevThresh");
+    if(block->CheckTokenExists("IdxOffset", true))
+        fIdxOffset = block->GetInt("IdxOffset");
+    if(block->CheckTokenExists("YRef", true))
+        fYRef = block->GetDouble("YRef");
     if(block->CheckTokenExists("BeamWindowY"))
         fWindowY = block->GetDouble("BeamWindowY");
     if(block->CheckTokenExists("BeamWindowZ"))
@@ -40,6 +46,9 @@ void ActAlgorithm::TopoSplit::Run()
 {
     if(!fIsEnabled)
         return;
+
+
+    // Vector with clusters to append
     std::vector<ActRoot::Cluster> toAppend {};
 
     for(auto it = fTPCData->fClusters.begin(); it != fTPCData->fClusters.end();)
@@ -88,47 +97,33 @@ void ActAlgorithm::TopoSplit::Run()
         double threshold {(fStdDevThresh == -1) ? median * fMedianFactor : fStdDevThresh};
         auto maxIt {std::find_if(maxSigma.begin(), maxSigma.end(), [&](double& s) { return s > threshold; })};
         int splitIdx {(maxIt != maxSigma.end()) ? (int)std::distance(maxSigma.begin(), maxIt) : -1};
-
-        // And assign gravity point to index before divergence
-        XYZPointF gp {};
+        // Assign gp candidate as splitIdx + fIdxOffset
+        int gpIdx {splitIdx + fIdxOffset};
         if(splitIdx != -1) // found split
         {
-            if(splitIdx > 0)
-                gp = gps[splitIdx - 1];
-            if(splitIdx == 0)
-                gp = gps[0];
+            if(gpIdx < 0)
+                gpIdx = 0;
+            else if(gpIdx >= gps.size())
+                gpIdx = gps.size() - 1;
         }
-        else // found no gp -> call BreakChi2 if possible
+        else // found no split -> call BreakChi2 if possible and let that function handle everything
         {
-            if(!fMultiAction->HasAction("BreakChi2")) // BreakChi2 not specified in ma.conf
-                return;
-            auto breakchi2 {fMultiAction->GetAction("BreakChi2")};
-            auto status {breakchi2->GetIsEnabled()};
-            breakchi2->SetIsEnabled(true);
-            breakchi2->Run();
-            breakchi2->SetIsEnabled(status);
+            FallbackToBreakChi2();
             return;
         }
+        // Find gravity point at that gpIdx
+        auto gp {FindPointCloserToY(voxels, xmin + gpIdx * fSliceStep, fSliceStep, fYRef)};
 
         // 6-> Find window point
         int xWindowSize {4};
-        std::vector<ActRoot::Voxel> windowVoxels {};
-        auto xaux {xmin};
-        std::copy_if(voxels.begin(), voxels.end(), std::back_inserter(windowVoxels), [&](const ActRoot::Voxel& v)
-                     { return xaux <= v.GetPosition().X() && v.GetPosition().X() < xaux + xWindowSize; });
-        auto [clusters, _] {fAlgo->Run(windowVoxels)};
-        // 7-> WP correspond to gravity point closer to middle of chamber in Y dir
-        int yRef {64};
-        auto minIt {std::min_element(clusters.begin(), clusters.end(),
-                                     [&](const ActRoot::Cluster& a, const ActRoot::Cluster& b)
-                                     {
-                                         auto ya {a.GetLine().GetPoint().Y()};
-                                         auto yb {b.GetLine().GetPoint().Y()};
-                                         return std::abs(ya - yRef) < std::abs(yb - yRef);
-                                     })};
-        XYZPointF wp {-1, -1, -1};
-        if(minIt != clusters.end())
-            wp = minIt->GetLine().GetPoint();
+        auto wp {FindPointCloserToY(voxels, xmin, xWindowSize, fYRef)};
+
+        // Cross check
+        if(gp.X() == -1 || wp.X() == -1)
+        {
+            FallbackToBreakChi2();
+            return;
+        }
 
         if(fIsVerbose)
         {
@@ -150,6 +145,15 @@ void ActAlgorithm::TopoSplit::Run()
         // 8-> And separate and run continuity (same as BreackChi2)
         // And define cylinder
         ActRoot::Line cylinder {gp, wp};
+        // Ensure two points are not too close to avoid poor direction
+        auto dist {(gp - wp).R()};
+        if(dist < 5) // hardcoded value... well... im tired of defining parameters
+        {
+            cylinder.SetDirection({1, 0, 0}); // in this case default to (1, 0, 0) dir
+            if(fIsVerbose)
+                std::cout << BOLDRED << "Setting default (1,0,0) dir" << RESET << '\n';
+        }
+
         auto toMove {std::partition(voxels.begin(), voxels.end(),
                                     [&](const ActRoot::Voxel& voxel)
                                     {
@@ -218,8 +222,56 @@ void ActAlgorithm::TopoSplit::Print() const
     std::cout << "  SliceStep  : " << fSliceStep << '\n';
     std::cout << "  MedianFact : " << fMedianFactor << '\n';
     std::cout << "  StdDevThre : " << fStdDevThresh << '\n';
+    std::cout << "  IdxOffset  : " << fIdxOffset << '\n';
+    std::cout << "  YRef       : " << fYRef << '\n';
     std::cout << "  WindowY    : " << fWindowY << '\n';
     std::cout << "  WindowZ    : " << fWindowZ << '\n';
+}
+
+ActAlgorithm::VAction::XYZPointF ActAlgorithm::TopoSplit::FindPointCloserToY(const std::vector<ActRoot::Voxel>& voxels,
+                                                                             double xmin, double width, double yRef)
+{
+    // Local Continuity with reduced NVoxels to be used ONLY in this function
+    if(!fRedCont)
+        fRedCont = std::make_shared<ActAlgorithm::Continuity>(fTPCPars, 1);
+
+    // Filter voxels in X range
+    std::vector<ActRoot::Voxel> gatedVoxels;
+    std::copy_if(voxels.begin(), voxels.end(), std::back_inserter(gatedVoxels), [xmin, width](const ActRoot::Voxel& v)
+                 { return xmin <= v.GetPosition().X() && v.GetPosition().X() < xmin + width; });
+
+    if(gatedVoxels.empty())
+        return XYZPointF {-1, -1, -1};
+
+    // Run clustering
+    auto [clusters, _] {fRedCont->Run(gatedVoxels)};
+
+    if(clusters.empty())
+        return XYZPointF {-1, -1, -1};
+
+    // Find cluster closest to yRef
+    auto minIt {std::min_element(clusters.begin(), clusters.end(),
+                                 [yRef](const ActRoot::Cluster& a, const ActRoot::Cluster& b)
+                                 {
+                                     auto ya {a.GetLine().GetPoint().Y()};
+                                     auto yb {b.GetLine().GetPoint().Y()};
+                                     return std::abs(ya - yRef) < std::abs(yb - yRef);
+                                 })};
+    if(minIt == clusters.end())
+        return XYZPointF {-1, -1, -1};
+
+    return minIt->GetLine().GetPoint();
+}
+
+void ActAlgorithm::TopoSplit::FallbackToBreakChi2()
+{
+    if(!fMultiAction->HasAction("BreakChi2"))
+        return;
+    auto breakchi2 {fMultiAction->GetAction("BreakChi2")};
+    auto status {breakchi2->GetIsEnabled()};
+    breakchi2->SetIsEnabled(true);
+    breakchi2->Run();
+    breakchi2->SetIsEnabled(status);
 }
 
 extern "C" ActAlgorithm::TopoSplit* CreateUserAction()
