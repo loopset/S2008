@@ -75,8 +75,12 @@ const TH2DModel EBeamRPx {"hEBeamRPx", "Beam energy;RP.X [mm];E_{Beam} [MeV]", 4
 
 const TH2DModel Eff2D {"hEff2D", "2D efficiency;#theta_{CM} [#circ];E_{CM} [MeV]", 720, 0, 180, 320, 0, 8};
 
-
 const TH2DModel ECMECM {"hECMRes", "E_{CM} resolution;E_{CM}^{nom} [MeV];E_{CM} [MeV]", 500, 0, 5, 500, 0, 5};
+
+const TH2DModel ThetaPhi {"hThetaPhi", "Lab angles;#theta [#circ];#phi [#circ]", 150, 0, 90, 180, 0, 360};
+
+const TH2DModel EPhi {"hEPhi", "E vs Phi;E [MeV];#phi [#circ]", 120, 0, 60, 180, 0, 360};
+
 template <typename T>
 T ChangeTitle(T model, const TString& title, const TString& label = "");
 } // namespace HistConfig

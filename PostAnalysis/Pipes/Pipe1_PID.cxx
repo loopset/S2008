@@ -149,12 +149,13 @@ void Pipe1_PID(const std::string& beam, const std::string& target, const std::st
                           },
                           {"MergerData", "ModularData", "TPCData"})
                         .Define("IsRANSAC", [](ActRoot::TPCData& tpc, ActRoot::MergerData& mer)
-                                { return tpc.fClusters[mer.fLightIdx].GetFlag("IsRANSAC"); },
-                                {"TPCData", "MergerData"})};
+                                { return tpc.fClusters[mer.fLightIdx].GetFlag("IsRANSAC"); }, {"TPCData", "MergerData"})
+                        .Define("NVoxelsLight", [](ActRoot::TPCData& tpc, ActRoot::MergerData& mer)
+                                { return tpc.fClusters[mer.fLightIdx].GetSizeOfVoxels(); }, {"TPCData", "MergerData"})};
         // Save in file
         auto name {TString::Format("./Outputs/tree_pid_%s_%s_%s.root", beam.c_str(), target.c_str(), light.c_str())};
         std::cout << "Saving PID_Tree in file : " << name << '\n';
-        gated.Snapshot("PID_Tree", name.Data(), {"MergerData", "IsRANSAC"});
+        gated.Snapshot("PID_Tree", name.Data(), {"MergerData", "IsRANSAC", "NVoxelsLight"});
     }
 
     // Draw

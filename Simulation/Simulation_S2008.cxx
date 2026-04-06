@@ -215,6 +215,12 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
     auto hPhiAll {std::make_unique<TH1D>("hPhiAll", "#phi eff;#phi [#circ];", 400, 0, 360)};
     auto hPhiLab {std::make_unique<TH1D>("hPhiLab", "#phi eff;#phi [#circ];", 400, 0, 360)};
 
+    // Two angles
+    auto hThetaPhi {HistConfig::ThetaPhi.GetHistogram()};
+
+    // E and phi
+    auto hEPhi {HistConfig::EPhi.GetHistogram()};
+
     // 3D efficiency
     auto hEffAll {HistConfig::Eff2D.GetHistogram()};
     auto hEffAfter {HistConfig::Eff2D.GetHistogram()};
@@ -530,11 +536,13 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
             hKinSampled->Fill(theta3LabEff * TMath::RadToDeg(), T3Lab);
             hKinVertex->Fill(theta3Lab * TMath::RadToDeg(), T3Recon);
             hEexAfter->Fill(ExAfter, weight);
+            hThetaPhi->Fill(theta3Lab * TMath::RadToDeg(), phi3Lab * TMath::RadToDeg());
             if(TString(firstLayer).Contains("f"))
             {
                 hsSP[firstLayer]->Fill(silPoint0InMM.Y(), silPoint0InMM.Z());
                 hsSPTheta[firstLayer]->Fill(silPoint0InMM.Y(), silPoint0InMM.Z(), thetaCM * TMath::RadToDeg());
                 hRPz->Fill(vertex.Y(), vertex.Z());
+                hEPhi->Fill(T3Recon, phi3Lab * TMath::RadToDeg());
             }
             else
             {
@@ -640,8 +648,9 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
         hRPz->DrawClone("colz");
         f0sm->DrawClone();
         c0->cd(6);
-        hELoss0->DrawClone("colz");
+        // hELoss0->DrawClone("colz");
         // hThetaLabNormal->DrawClone("colz");
+        hEPhi->DrawClone("colz");
 
         auto* c1 {new TCanvas("cAfter", "Canvas for inspection 1")};
         c1->DivideSquare(6);
@@ -661,7 +670,8 @@ void Simulation_S2008(const std::string& beam, const std::string& target, const 
         // effLab->Draw("apl");
         effPhi->Draw("apl");
         c1->cd(6);
-        hDeltaE->DrawClone("colz");
+        // hDeltaE->DrawClone("colz");
+        hThetaPhi->DrawClone("colz");
 
         auto* c2 {new TCanvas {"c2", "2D Eff canvas"}};
         c2->DivideSquare(6);

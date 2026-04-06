@@ -8,10 +8,11 @@
 
 #include <fstream>
 #include <memory>
-void getHighE()
+
+void GetData()
 {
-    ActRoot::DataManager dataman {"../configs/data.conf", ActRoot::ModeType::EReadSilMod};
-    dataman.SetRuns(31, 32);
+    ActRoot::DataManager dataman {"../../configs/data.conf", ActRoot::ModeType::EReadSilMod};
+    dataman.SetRuns(31, 33);
     auto chain {dataman.GetChain()};
     auto chainMerger {dataman.GetChain(ActRoot::ModeType::EMerge)};
     chain->AddFriend(chainMerger.get());
@@ -20,21 +21,21 @@ void getHighE()
     auto df {d.Define("GATCONF", [](ActRoot::ModularData& mod) { return mod.Get("GATCONF"); }, {"ModularData"})};
 
     auto specs {std::make_shared<ActPhysics::SilSpecs>()};
-    specs->ReadFile("../configs/silspecs.conf");
+    specs->ReadFile("../../configs/silspecs.conf");
 
-    // Gate on front events poorly reconstructed
+    // Gate on front events
     auto dfFilter {df.Filter(
-        [&](float gatconf, ActRoot::MergerData& mer, ActRoot::SilData& sil)
+        [&](float& gatconf, ActRoot::MergerData& mer, ActRoot::SilData& sil)
         {
             sil.ApplyFinerThresholds(specs);
-            if(gatconf == 4 && sil.fSiE["f0"].size() == 1 && mer.fLightIdx == -1)
-                if(sil.fSiE["f0"].front() >= 10)
-                    return true;
+            if(gatconf == 4 && sil.fSiE["f0"].size() == 1)
+                // if(sil.fSiE["f0"].front() >= 10)
+                return true;
             return false;
         },
         {"GATCONF", "MergerData", "SilData"})};
 
-    std::ofstream streamer {"./Outputs/high_E.dat"};
+    std::ofstream streamer {"./Inputs/events_f0.dat"};
     dfFilter.Foreach([&](ActRoot::MergerData& mer) { mer.Stream(streamer); }, {"MergerData"});
     streamer.close();
 }
