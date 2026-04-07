@@ -133,7 +133,15 @@ void Pipe2_Ex(const std::string& beam, const std::string& target, const std::str
             .Define("Rec_ECM", [&](double rec_EBeam) { return (mtarget / (mbeam + mtarget)) * rec_EBeam; },
                     {"Rec_EBeam"})
             .Filter("fRP.fCoordinates.fX <= 200") // Mask decays by position... for 20Na; for 20Mg ~ 205 mm
-    };
+            .Filter(                    // filter events poorly reconstructed with NaN when evaluating momentum
+                [&pb](double rec_ebeam) // these are few events but since we throw an exception, halts all calculations
+                {
+                    // For some events p is imaginary... poor reconstruction of who knows
+                    double E {rec_ebeam + pb.GetMass()};
+                    double p {TMath::Sqrt(E * E - pb.GetMass() * pb.GetMass())};
+                    return std::isfinite(p);
+                },
+                {"Rec_EBeam"})};
 
     def =
         def.DefineSlot("Ex",
@@ -146,17 +154,11 @@ void Pipe2_Ex(const std::string& beam, const std::string& target, const std::str
             .DefineSlot("Rec_Ex",
                         [&](unsigned int slot, const ActRoot::MergerData& d, double EVertex, double EBeam)
                         {
-                            // For some events p is imaginary... poor reconstruction of who knows
-                            double E {EBeam + pb.GetMass()};
-                            double p {TMath::Sqrt(E * E - pb.GetMass() * pb.GetMass())};
-                            bool isOk {std::isfinite(p)};
-                            if(!isOk)
-                                return 0.;
                             vkins[slot].SetBeamEnergy(EBeam);
                             return vkins[slot].ReconstructExcitationEnergy(EVertex,
                                                                            (d.fThetaLight) * TMath::DegToRad());
                         },
-                        {"MergerData", "EVertex", "EBeam"})
+                        {"MergerData", "EVertex", "Rec_EBeam"})
             .DefineSlot("ThetaCM",
                         [&](unsigned int slot, const ActRoot::MergerData& d, double EVertex, double EBeam)
                         {
@@ -169,12 +171,6 @@ void Pipe2_Ex(const std::string& beam, const std::string& target, const std::str
             .DefineSlot("Rec_ThetaCM",
                         [&](unsigned int slot, const ActRoot::MergerData& d, double EVertex, double EBeam)
                         {
-                            // For some events p is imaginary... poor reconstruction of who knows
-                            double E {EBeam + pb.GetMass()};
-                            double p {TMath::Sqrt(E * E - pb.GetMass() * pb.GetMass())};
-                            bool isOk {std::isfinite(p)};
-                            if(!isOk)
-                                return 0.;
                             vkins[slot].SetBeamEnergy(EBeam);
                             return vkins[slot].ReconstructTheta3CMFromLab(EVertex,
                                                                           (d.fThetaLight) * TMath::DegToRad()) *

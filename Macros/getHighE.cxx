@@ -28,8 +28,11 @@ void getHighE()
         {
             sil.ApplyFinerThresholds(specs);
             if(gatconf == 4 && sil.fSiE["f0"].size() == 1 && mer.fLightIdx == -1)
+            {
                 if(sil.fSiE["f0"].front() >= 10)
                     return true;
+                return false;
+            }
             return false;
         },
         {"GATCONF", "MergerData", "SilData"})};
