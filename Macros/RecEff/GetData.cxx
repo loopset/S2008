@@ -28,7 +28,7 @@ void GetData()
         [&](float& gatconf, ActRoot::MergerData& mer, ActRoot::SilData& sil)
         {
             sil.ApplyFinerThresholds(specs);
-            if(gatconf == 4 && sil.fSiE["f0"].size() == 1)
+            if(gatconf == 4 && sil.fSiE["f0"].size() == 1 && sil.fSiE["f1"].size() == 0)
                 // if(sil.fSiE["f0"].front() >= 10)
                 return true;
             return false;
