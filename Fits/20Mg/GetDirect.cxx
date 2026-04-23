@@ -64,6 +64,6 @@ void GetDirect()
     xs.DrawProjectionsECM([](TH1* p) { p->SetLineColor(46); });
 
     // Write one
-    // xs.WriteInAzureFormat(6, "./Azure/Inputs/lab_1425.dat");
-    // xs.WriteInAzureFormat(7, "./Azure/Inputs/lab_1475.dat");
+    xs.WriteInAzureFormat(10, "./Azure/Inputs/lab_1425.dat");
+    xs.WriteInAzureFormat(11, "./Azure/Inputs/lab_1475.dat");
 }
