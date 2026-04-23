@@ -1,6 +1,7 @@
 *.pdf
 *.png
 *.root
+*.h5
 
 .clang-format
 
