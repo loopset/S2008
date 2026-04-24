@@ -51,8 +51,8 @@ void GetDirect()
     DoubleXS xs {h2d.GetPtr(), heff, srim, Nbeams, rho, direct.get()};
     xs.Draw();
 
-    // // Write
-    // xs.GetHist()->SaveAs("./Outputs/preliminary_xs.root");
+    // Write
+    xs.GetHist()->SaveAs("./Outputs/preliminary_xs.root");
 
     xs.Project(40);
     xs.DrawProjectionsThetaCM(

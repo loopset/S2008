@@ -1,0 +1,51 @@
+<config>
+true                                                                                                #Perform A-Matrix Calculation
+/media/Data/S2008/Fits/20Mg/Azure/Outputs/                                                          #Full Path to Output Directory
+/media/Data/S2008/Fits/20Mg/Azure/Checks/                                                           #Full Path to Checks Directory
+none                                                                                                #Compond Nucleus Check
+none                                                                                                #Boundary Condition Check
+none                                                                                                #Data Check
+screen                                                                                              #Lo-Matrix and Penetrability Check
+none                                                                                                #Legendre Polynomial Check
+none                                                                                                #Coulomb Amplitudes Check
+none                                                                                                #Reaction Pathway Check
+screen                                                                                              #Angular Distributions Check
+</config>
+<levels>
+ 0.5    1         0.45    0    1    1    1    0    1    1    0               67000  0.5    1    0    1            0       1      20    1   12         -1.1         -1.1    0    0          0.0     0     5.2            0            0       0
+
+ 0.5    1           10    1    1    1    1    0    2    1    0               3e+06  0.5    1    0    1            0       1      20    1   12         -1.1         -1.1    0    0          0.0     0     5.2            0            0       0
+
+ 1.5    1         1.41    0    1    1    1    4    3    0    0                  90  0.5    1    0    1            0       1      20    1   12         -1.1         -1.1    0    0          0.0     0     5.2            0            0       0
+
+ 1.5    1         3.58    0    1    1    1    4    4    0    0              783000  0.5    1    0    1            0       1      20    1   12         -1.1         -1.1    0    0          0.0     0     5.2            0            0       0
+
+ 1.5    1           10    1    1    1    1    4    5    0    0               3e+06  0.5    1    0    1            0       1      20    1   12         -1.1         -1.1    0    0          0.0     0     5.2            0            0       0
+
+ 2.5    1         0.05    0    1    1    1    4    6    1    0                0.05  0.5    1    0    1            0       1      20    1   12         -1.1         -1.1    0    0          0.0     0     5.2            0            0       0
+
+ 2.5    1         0.59    0    1    1    1    4    7    0    0                 190  0.5    1    0    1            0       1      20    1   12         -1.1         -1.1    0    0          0.0     0     5.2            0            0       0
+
+ 2.5    1           10    1    1    1    1    4    8    1    0               3e+06  0.5    1    0    1            0       1      20    1   12         -1.1         -1.1    0    0          0.0     0     5.2            0            0       0
+
+ 3.5   -1         5.85    0    1    1    1    6    9    0    0              273000  0.5    1    0    1            0       1      20    1   12         -1.1         -1.1    0    0          0.0     0     5.2            0            0       0
+
+ 3.5   -1           10    1    1    1    1    6   10    0    0               3e+06  0.5    1    0    1            0       1      20    1   12         -1.1         -1.1    0    0          0.0     0     5.2            0            0       0
+
+</levels>
+<segmentsData>
+1              1              1              0.55           4.05           142.5          142.5          1              1              1              3000           /media/Data/S2008/Fits/20Mg/Azure/Inputs/lab_1425.dat
+</segmentsData>
+<segmentsTest>
+</segmentsTest>
+<targetInt>
+0              "1"            10             1              0.03           0              0               "" 0               0              0 
+</targetInt>
+<lastRun>
+8973
+""
+""
+0 0
+0 ""
+-1. -1. -1.
+</lastRun>

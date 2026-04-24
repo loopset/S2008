@@ -35,8 +35,8 @@ private:
     TString fIsCM {};
 
 public:
-    DoubleXS(TH2* hData, TH2* hEff, ActPhysics::SRIM* srim, double nb, double rho,
-             ActPhysics::Kinematics* kin, TString isCM = "Lab");
+    DoubleXS(TH2* hData, TH2* hEff, ActPhysics::SRIM* srim, double nb, double rho, ActPhysics::Kinematics* kin,
+             TString isCM = "Lab");
 
     void Draw();
 
@@ -44,7 +44,8 @@ public:
     void DrawProjectionsThetaCM(const std::function<void(TH1* h)>& apply = nullptr);
     void DrawProjectionsECM(const std::function<void(TH1* h)>& apply = nullptr);
     TH1D* GetProjectionECM(double thetamin, double thetamax);
-    void WriteInAzureFormat(int idx, const TString& file);
+    void
+    WriteInAzureFormat(int idx, const TString& file, TH1D* pout = nullptr, const std::pair<double, double>& ivs = {-1, -1});
     TH2* GetHist() { return fHist; }
 
 private:

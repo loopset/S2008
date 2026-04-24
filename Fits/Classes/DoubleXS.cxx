@@ -245,20 +245,29 @@ TH1D* DoubleXS::GetProjectionECM(double thetamin, double thetamax)
     return p;
 }
 
-void DoubleXS::WriteInAzureFormat(int idx, const TString& file)
+void DoubleXS::WriteInAzureFormat(int idx, const TString& file, TH1D* pout, const std::pair<double, double>& ivs)
 {
     // Ensure projecition exists
     TH1D* p {};
-    try
+    if(pout)
+        p = pout;
+    else
     {
-        p = fProjsECM.at(idx);
+        try
+        {
+            p = fProjsECM.at(idx);
+        }
+        catch(std::exception& e)
+        {
+            throw std::runtime_error("DoubleXS::WriteInAzureFormat: cannot find idx: " + std::to_string(idx) +
+                                     " in fProjecECM");
+        }
     }
-    catch(std::exception& e)
-    {
-        throw std::runtime_error("DoubleXS::WriteInAzureFormat: cannot find idx: " + std::to_string(idx) +
-                                 " in fProjecECM");
-    }
-    auto centre {(fIvsECM[idx].first + fIvsECM[idx].second) / 2};
+    double centre {};
+    if(pout)
+        centre = (ivs.first + ivs.second) / 2;
+    else
+        centre = (fIvsECM[idx].first + fIvsECM[idx].second) / 2;
     std::ofstream streamer {file};
     for(int b = 1; b <= p->GetNbinsX(); b++)
     {
