@@ -9,7 +9,14 @@ import numpy as np
 
 import ROOT as r
 
-tpc = r.TFile("./Inputs/event_ransac_r31_entry26.root").Get("TPCData")  # type: ignore
+which = "s2384"
+print(f"Which exp ? {which}")
+assert which == "s2384" or which == "s2008", "which is not correct"
+
+if which == "s2008":
+    tpc = r.TFile("./Inputs/event_ransac_r31_entry26.root").Get("TPCData")  # type: ignore
+else:
+    tpc = r.TFile("../../../S2384/Macros/Outputs/for_slides_r19_e1577.root").Get("TPCData")  # type: ignore
 ev = TPCInterface(tpc)
 
 fig = plt.figure(figsize=(6, 5))
@@ -186,8 +193,14 @@ bg.annotate(
     ha="center",
     va="center",
 )
+fmt = ""
+if which == "s2008":
+    fmt = r"95% H$_2$ + 5% iC$_4$H$_{10}$" + "\n@ 800 mbar"
+else:
+    fmt = r"95% D$_2$ + 5% iC$_4$H$_{10}$" + "\n@ 900 mbar"
+
 bg.annotate(
-    r"95% H$_2$ + 5% iC$_4$H$_{10}$" + "\n@ 800 mbar",
+    fmt,
     xy=(0.625, 0.225),
     fontsize=12,
     fontweight=fontweight,
@@ -203,15 +216,25 @@ bg.annotate(
         arrowstyle="->,head_width=0.5, head_length=0.75", color="crimson", lw=2
     ),
 )
+fmt = ""
+if which == "s2008":
+    fmt = r"$^{20}$Mg @ 4.25 AMeV"
+else:
+    fmt = r"$^{7,11}$Li @ 7.5 AMeV"
 bg.annotate(
-    r"$^{20}$Mg @ 4.25 AMeV",
+    fmt,
     xy=(0.15, 0.06),
     fontsize=fontsize,
     fontweight=fontweight,
     fontstyle=fontstyle1,
 )
+fmt = ""
+if which == "s2008":
+    fmt = r"$\sim$ 400 pps"
+else:
+    fmt = r"$\sim 2\cdot 10^3$ pps"
 bg.annotate(
-    r"$\sim$ 400 pps",
+    fmt,
     xy=(0.5, 0.06),
     fontsize=fontsize,
     fontweight=fontweight,
@@ -219,7 +242,10 @@ bg.annotate(
 )
 
 # Save!
-fig.savefig("./Ouptuts/setup.png", dpi=300)
+if which == "s2008":
+    fig.savefig("./Ouptuts/setup.png", dpi=300)
+else:
+    fig.savefig("./Ouptuts/setup_s2384.png", dpi=300)
 # fig, ax = plt.subplots()
 # h = ev.fHist.project("X", "Z")
 # h.plot(cmin=1)

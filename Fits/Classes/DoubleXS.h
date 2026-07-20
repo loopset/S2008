@@ -25,11 +25,11 @@ private:
     TH2* fOriginal {};
     TH2* fHist {};
     TH2* fEff {};
-    ActPhysics::SRIM* fsrim {};
+    ActPhysics::SRIM* fsrim {}; //!
     TProfile2D* fEffProf {};
     TF1* fFuncOmega {};
     TH2* fThick {};
-    ActPhysics::Kinematics* fKin {};
+    ActPhysics::Kinematics* fKin {}; //!
     double fNbeams {};
     double fDensity {};
     TString fIsCM {};
@@ -44,9 +44,13 @@ public:
     void DrawProjectionsThetaCM(const std::function<void(TH1* h)>& apply = nullptr);
     void DrawProjectionsECM(const std::function<void(TH1* h)>& apply = nullptr);
     TH1D* GetProjectionECM(double thetamin, double thetamax);
-    void
-    WriteInAzureFormat(int idx, const TString& file, TH1D* pout = nullptr, const std::pair<double, double>& ivs = {-1, -1});
+    void WriteInAzureFormat(int idx, const TString& file, TH1D* pout = nullptr,
+                            const std::pair<double, double>& ivs = {-1, -1});
     TH2* GetHist() { return fHist; }
+    std::vector<PairType> GetIvsE() const { return fIvsECM; }
+    std::vector<TH1D*>& GetProjsE() { return fProjsECM; }
+    std::vector<PairType> GetIvsTheta() const { return fIvsThetaCM; }
+    std::vector<TH1D*>& GetProjsTheta() { return fProjsThetaCM; }
 
 private:
     void ApplyEff();

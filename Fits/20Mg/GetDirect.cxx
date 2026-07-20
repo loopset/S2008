@@ -63,7 +63,11 @@ void GetDirect()
         });
     xs.DrawProjectionsECM([](TH1* p) { p->SetLineColor(46); });
 
-    // Write one
+
+    // And do integral
+
+
+    // Write to AZURE
     xs.WriteInAzureFormat(10, "./Azure/Inputs/lab_1425.dat");
     xs.WriteInAzureFormat(11, "./Azure/Inputs/lab_1475.dat");
 }

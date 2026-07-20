@@ -7,6 +7,7 @@
 #include "TCanvas.h"
 #include "TF1.h"
 #include "TString.h"
+#include "TVirtualPad.h"
 
 #include <exception>
 #include <fstream>
@@ -23,6 +24,9 @@ DoubleXS::DoubleXS(TH2* hData, TH2* hEff, ActPhysics::SRIM* srim, double nb, dou
       fKin(kin),
       fIsCM(isCM)
 {
+    if((fIsCM != "Lab") && (fIsCM != "CM"))
+        throw std::invalid_argument("isCM can only be Lab or CM");
+
     fOriginal = (TH2*)hData->Clone("hOriginal");
     fHist->SetTitle("Cross section");
     fHist->GetZaxis()->SetTitle("d#sigma/d#Omega [mb/sr]");
@@ -102,16 +106,19 @@ void DoubleXS::ApplyThickness()
         // This is in direct kinematics
         auto elow {fThick->GetYaxis()->GetBinLowEdge(y)};
         auto eup {fThick->GetYaxis()->GetBinUpEdge(y)};
-        // Get equivalent 20Mg energy as beam
-        if(!fKin)
-            throw std::runtime_error("Cannot transform p energy to RIB");
-        elow = fKin->ComputeEquivalentOtherT1(elow);
-        eup = fKin->ComputeEquivalentOtherT1(eup);
         // Convert to lab if in CM
         if(fIsCM == "CM")
         {
             elow = TransformCMtoLab(elow);
             eup = TransformCMtoLab(eup);
+        }
+        else // else assume direct kin (p) so convert temporarily to RIB (20Mg)
+        {
+            // Get equivalent 20Mg energy as beam
+            if(!fKin)
+                throw std::runtime_error("Cannot transform p energy to RIB");
+            elow = fKin->ComputeEquivalentOtherT1(elow);
+            eup = fKin->ComputeEquivalentOtherT1(eup);
         }
         auto key {"beam"};
         if(!fsrim || !fsrim->CheckKeyIsStored(key))
@@ -228,10 +235,16 @@ void DoubleXS::DrawProjectionsECM(const std::function<void(TH1*)>& apply)
     {
         c->cd(i + 1);
         auto& h {fProjsECM[i]};
-        if(apply)
-            apply(h);
         h->Draw("histe");
+        gPad->Update();
+        if(apply)
+        {
+            apply(h);
+            gPad->Modified();
+        }
     }
+    c->cd();
+    c->Update();
 }
 
 TH1D* DoubleXS::GetProjectionECM(double thetamin, double thetamax)

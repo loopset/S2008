@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 import uproot
 
-file = uproot.open("../../Fits/20Mg/Outputs/preliminary_xs.root")
+# file = uproot.open("../../Fits/20Mg/Outputs/preliminary_xs.root")
+file = uproot.open("../../Fits/20Mg/Outputs/preliminary_xs_cm.root")
 if file is None:
     raise ValueError("File is not reachable")
 
@@ -21,18 +22,21 @@ data[:, 0] *= 20.0 / 21
 data[:, 2:4] *= 7.8653740e-03
 
 
-fig, ax = plt.subplots(figsize=(6, 5))
-overflow = 250
+fig, ax = plt.subplots(figsize=(4, 3.25))
+overflow = 500
 # phys.utils.set_hist_overflow(h, overflow)
 ret = h.plot(ax=ax, cmap="managua_r", cmax=overflow, cmin=1, rasterized=True)
-ax.set_xlabel(r"$\theta_{lab}$ [$\circ$]")
-ax.set_ylabel(r"$E_{beam,p}$ [MeV]")
+ax.set_xlabel(r"$\theta_{CM}$ [$\circ$]")
+ax.set_ylabel(r"$E_{CM}$ [MeV]")
 ret[1].set_label(r"d$\sigma$/d$\Omega$ [mb/sr]")
-ax.set_xlim(80)
-ax.axvspan(xmin=140, xmax=145, color="crimson", alpha=0.25)
+ax.set_xlim(0)
+# ax.axvspan(xmin=140, xmax=145, color="crimson", alpha=0.25)
 
 fig.tight_layout()
 fig.savefig("./Outputs/xs.png", dpi=300)
+
+
+################################### AZURE plot
 
 # plt.close("all")
 fig, ax = plt.subplots(figsize=(6, 4))
@@ -69,6 +73,6 @@ ax.annotate(
 ax.legend()
 
 fig.tight_layout()
-fig.savefig("./Outputs/azure.png", dpi=300)
+# fig.savefig("./Outputs/azure.png", dpi=300)
 
 plt.show()
