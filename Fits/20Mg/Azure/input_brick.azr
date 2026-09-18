@@ -1,5 +1,5 @@
 <config>
-true                                                                                                #Perform A-Matrix Calculation
+false                                                                                               #Perform A-Matrix Calculation
 /media/Data/S2008/Fits/20Mg/Azure/Outputs/                                                          #Full Path to Output Directory
 /media/Data/S2008/Fits/20Mg/Azure/Checks/                                                           #Full Path to Checks Directory
 none                                                                                                #Compond Nucleus Check
@@ -34,7 +34,7 @@ screen                                                                          
 
 </levels>
 <segmentsData>
-1              1              1              0.55           4.05           142.5          142.5          1              1              1              3000           /media/Data/S2008/Fits/20Mg/Azure/Inputs/lab_1425.dat
+1              1              1              0.55           3.95           142.5          142.5          1              1              1              3000           /media/Data/S2008/Fits/20Mg/Azure/Inputs/lab_1425.dat
 </segmentsData>
 <segmentsTest>
 </segmentsTest>
@@ -42,7 +42,7 @@ screen                                                                          
 0              "1"            10             1              0.03           0              0               "" 0               0              0 
 </targetInt>
 <lastRun>
-8973
+8972
 ""
 ""
 0 0

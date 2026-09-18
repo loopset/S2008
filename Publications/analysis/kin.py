@@ -27,7 +27,7 @@ for i, ransac in enumerate([None, True]):
     h.fill(data[mask]["fThetaLight"], data[mask]["EVertex"])
     hs.append(h)
 
-fig, ax = plt.subplots(figsize=(4, 3.25))
+fig, ax = plt.subplots(figsize=(6, 4))
 ax: mplaxes.Axes
 for i, h in enumerate(hs):
     cmap = "Reds_r" if i == 1 else "managua_r"
