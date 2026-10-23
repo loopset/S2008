@@ -34,7 +34,7 @@ screen                                                                          
 
 </levels>
 <segmentsData>
-1              1              1              0.55           3.95           142.5          142.5          1              1              1              3000           /media/Data/S2008/Fits/20Mg/Azure/Inputs/lab_1425.dat
+1              1              1              0.55           3.95           142.5          142.5          1              1              1              30000          /media/Data/S2008/Fits/20Mg/Azure/Inputs/lab_1425.dat
 </segmentsData>
 <segmentsTest>
 </segmentsTest>

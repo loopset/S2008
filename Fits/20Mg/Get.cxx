@@ -32,7 +32,7 @@ void Get()
 
 
     auto h2d {
-        df.Histo2D({"h20Mg", "20Mg;#theta_{CM} [#circ];E_{CM} [MeV]", 180, 0, 180, 100, 0, 5}, "Rec_ThetaCM", "Rec_ECM")};
+        df.Histo2D({"h20Mg", "20Mg;#theta_{CM} [#circ];E_{CM} [MeV]", 90, 0, 180, 50, 0, 5}, "Rec_ThetaCM", "Rec_ECM")};
     h2d->SetTitle("Counts");
 
     // Read srim
@@ -83,7 +83,7 @@ void Get()
                           return g;
                       }};
     std::pair<double, double> id {0.8, 1.2};
-    std::pair<double, double> is {1.2, 1.8};
+    std::pair<double, double> is {1.35, 1.8};
 
     // 5/2+ integral
     auto* gd {integralInE(id)};
@@ -92,11 +92,18 @@ void Get()
     gs->SetTitle("1/2^{+};cos #theta_{CM};#sum d#sigma/d#Omega");
 
     // Build legendre
-    auto* ld {new TF1 {"ld", "ROOT::Math::legendre(2, x)", -1, 1}};
+    auto* ld {new TF1 {"ld", "[0] * ROOT::Math::legendre(2, x)", -1, 1}};
     ld->SetTitle("l = 2");
-    auto* ls {new TF1 {"ls", "ROOT::Math::legendre(0, x)", -1, 1}};
+    auto* ls {new TF1 {"ls", "[0] * ROOT::Math::legendre(0, x)", -1, 1}};
     ls->SetTitle("l = 0");
     ls->SetLineColor(8);
+
+    // Fit!
+    for(auto* g : {gd, gs})
+    {
+        g->Fit("ld", "R");
+        g->Fit("ls", "R+");
+    }
 
 
     auto* c0 {new TCanvas {"c0", "Ang canvas"}};
@@ -104,7 +111,7 @@ void Get()
     c0->cd(1);
     projE->Draw("histe");
     gPad->Update();
-    for(auto& v : {id.first, id.second, is.second})
+    for(auto& v : {id.first, id.second, is.first, is.second})
     {
         auto* l {new TLine {v, gPad->GetUymin(), v, gPad->GetUymax()}};
         l->SetLineColor(kRed);

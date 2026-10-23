@@ -1,0 +1,36 @@
+<config>
+true                                                                                                #Perform A-Matrix Calculation
+/media/Data/S2008/Fits/20Mg/Azure/Outputs/                                                          #Full Path to Output Directory
+/media/Data/S2008/Fits/20Mg/Azure/Checks/                                                           #Full Path to Checks Directory
+none                                                                                                #Compond Nucleus Check
+none                                                                                                #Boundary Condition Check
+none                                                                                                #Data Check
+screen                                                                                              #Lo-Matrix and Penetrability Check
+screen                                                                                              #Legendre Polynomial Check
+none                                                                                                #Coulomb Amplitudes Check
+none                                                                                                #Reaction Pathway Check
+screen                                                                                              #Angular Distributions Check
+</config>
+<levels>
+ 2.5    1          3.5    0    1    1    1    4    1    1    0               50000  0.5    1    0    1            0       1      12    1    6         1.94         1.94    0    0          0.0     0    4.93            0            0       0
+
+ 2.5    1           15    1    1    1    1    4    2    1    1               5e+06  0.5    1    0    1            0       1      12    1    6         1.94         1.94    0    0          0.0     0    4.93            0            0       0
+
+</levels>
+<segmentsData>
+1              1              1              0.343          3              170            170            1              1              0              100            /media/Data/S2008/Fits/20Mg/Azure/school_2024/2_Tuesday/example_2_12C_pp/mazzoni_pp.dat
+</segmentsData>
+<segmentsTest>
+0              1              1              0.1            3              0.01           120            120            0              1
+</segmentsTest>
+<targetInt>
+0              "1"            10             1              0.03           0              0               "" 0               0              0 
+</targetInt>
+<lastRun>
+8969
+""
+""
+0 0
+0 ""
+-1. -1. -1.
+</lastRun>
